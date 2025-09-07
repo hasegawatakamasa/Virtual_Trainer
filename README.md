@@ -11,8 +11,10 @@
 
 
 # 1. リポジトリをクローン
+```sh
 git clone https://github.com/your-repo/Virtual_Trainer.git
 cd Virtual_Trainer
+```
 
 # 2. AIモデルの環境構築
 cd AI_Model
