@@ -263,3 +263,8 @@ iOSInjectionProject/
 # Temporary files
 *.tmp
 *.temp
+
+# Audio files (VOICEVOX generated content)
+# これらの音声ファイルは手動でプロジェクトに追加する必要があります
+VirtualTrainerApp/Resources/Audio/*.wav
+AI_Model/sounds/*.wav

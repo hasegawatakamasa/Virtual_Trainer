@@ -69,7 +69,47 @@ Webカメラが起動し、リアルタイムでのフォーム判定が開始�
 
 ---
 
-## iOSアプリ (開発中)
+## iOSアプリ
 
-- `VirtualTrainerApp` ディレクトリにXcodeプロジェクトが含まれています。
-- `open VirtualTrainerApp/VirtualTrainerApp.xcodeproj` で開くことができます。
+`VirtualTrainerApp` ディレクトリにXcodeプロジェクトが含まれています。
+
+### セットアップ手順
+
+1. **Xcodeプロジェクトを開く:**
+   ```bash
+   open VirtualTrainerApp/VirtualTrainerApp.xcodeproj
+   ```
+
+2. **音声ファイルを準備:**
+   
+   音声フィードバック機能を使用するには、VOICEVOXで生成された音声ファイルが必要です。
+   
+   **必要なファイル:**
+   - `zundamon_elbow_error.wav` - フォームエラー時の音声
+   - `1.wav〜10.wav` - 回数カウント音声
+   
+   **準備方法:**
+   - `AI_Model/sounds/`から対応ファイルをコピー、または
+   - [VOICEVOX](https://voicevox.hiroshiba.jp/)で「ずんだもん」音声を生成
+   
+   **Xcodeへの追加:**
+   1. `VirtualTrainerApp/Resources/Audio/` フォルダを右クリック
+   2. "Add Files to VirtualTrainerApp" を選択
+   3. 音声ファイル（全11ファイル）を選択して追加
+   
+   詳細な手順は `VirtualTrainerApp/Resources/Audio/README.md` をご確認ください。
+
+### 機能
+
+- **リアルタイム姿勢推定:** カメラ映像からの骨格検出・動き追跡
+- **フォーム自動判定:** 肘の角度に基づくエクササイズフォーム評価
+- **音声フィードバック:** フォームエラー時とレップカウント時の音声指導
+- **レップカウント:** 正しいフォームでの繰り返し回数自動カウント
+- **設定機能:** 音声ON/OFF、デバッグモード等
+
+### ライセンス・クレジット
+
+音声機能は **VOICEVOX（ずんだもん）** を使用：
+- 音声合成: [VOICEVOX](https://voicevox.hiroshiba.jp/)
+- キャラクター: ずんだもん
+- 利用規約に準拠したクレジット表示を実装済み
