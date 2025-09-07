@@ -5,6 +5,7 @@ import numpy as np
 from ultralytics import YOLO
 from collections import deque
 import os
+import sys
 
 # --- GRUモデルの定義 (量子化モデルを読み込むために必要) ---
 class GRUModel(nn.Module):
@@ -40,6 +41,10 @@ def process_keypoints(frame_keypoints):
 
 # --- メイン実行ブロック ---
 if __name__ == '__main__':
+    # macOS (Apple Silicon)での量子化モデル読み込みに対応
+    if sys.platform == "darwin":
+        torch.backends.quantized.engine = 'qnnpack'
+
     print("モデルを読み込んでいます...")
     yolo_model = YOLO("yolo11n-pose.pt")
     
