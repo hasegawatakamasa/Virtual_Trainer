@@ -252,8 +252,8 @@ iOSInjectionProject/
 # Claude Code
 .claude/
 
-# Kiro Specs (開発用)
-.kiro/
+# Kiro Specs - Allow steering files but ignore other development files
+.kiro/specs/
 
 # AI Models (大きなファイル)
 *.pth
