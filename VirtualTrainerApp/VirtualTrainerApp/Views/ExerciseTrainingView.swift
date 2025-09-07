@@ -8,6 +8,7 @@ struct ExerciseTrainingView: View {
     @StateObject private var formAnalyzer = FormAnalyzer()
     @StateObject private var repCounter = RepCounterManager()
     @StateObject private var mlModelManager = MLModelManager()
+    @StateObject private var audioFeedbackService = AudioFeedbackService()
     @State private var isProcessing = false
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showingSettings = false
@@ -26,7 +27,8 @@ struct ExerciseTrainingView: View {
             FeedbackOverlayView(
                 formAnalyzer: formAnalyzer,
                 repCounter: repCounter,
-                mlModelManager: mlModelManager
+                mlModelManager: mlModelManager,
+                audioFeedbackService: audioFeedbackService
             )
             
             // コントロールUI
@@ -135,6 +137,17 @@ struct ExerciseTrainingView: View {
             }
             .store(in: &cancellables)
             
+        // フォーム分類結果の監視と音声フィードバック処理
+        mlModelManager.$lastFormResult
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak audioFeedbackService, weak formAnalyzer] formResult in
+                // エクササイズゾーン内でのみ音声フィードバックを有効にする
+                let isInZone = formAnalyzer?.isInExerciseZone ?? false
+                audioFeedbackService?.processFormResult(formResult, isInExerciseZone: isInZone)
+            }
+            .store(in: &cancellables)
+            
         // アプリライフサイクルの監視
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             .sink { _ in
@@ -151,6 +164,7 @@ struct ExerciseTrainingView: View {
     
     private func cleanup() {
         cameraManager.stopSession()
+        audioFeedbackService.stopCurrentFeedback()
         cancellables.removeAll()
     }
     
@@ -173,6 +187,9 @@ struct ExerciseTrainingView: View {
             // 回数完了時の振動フィードバック
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
+            
+            // 回数カウント音声の再生
+            audioFeedbackService.playRepCountAudio(count: count)
             
             if AppSettings.shared.debugMode {
                 print("✅ Rep completed: \(count)")
@@ -247,15 +264,15 @@ extension ExerciseTrainingView {
         guard mlModelManager.isModelLoaded else { return }
         
         // AI推論を背景キューで実行
-        let result = await withTaskGroup(of: (PoseKeypoints?, FormClassification?, TimeInterval).self) { group in
+        let result = await withTaskGroup(of: (PoseKeypoints?, FormClassification.Result?, TimeInterval).self) { group in
             let startTime = CFAbsoluteTimeGetCurrent()
             
             group.addTask {
                 // 姿勢検出を実行
                 let poseKeypoints = await self.mlModelManager.detectPose(in: pixelBuffer)
-                let formClassification = await self.mlModelManager.classifyForm(features: [])
+                let formClassificationResult = await self.mlModelManager.classifyForm(features: [])
                 let inferenceTime = CFAbsoluteTimeGetCurrent() - startTime
-                return (poseKeypoints, formClassification, inferenceTime)
+                return (poseKeypoints, formClassificationResult, inferenceTime)
             }
             
             return await group.next() ?? (nil, nil, 0.0)
@@ -263,7 +280,7 @@ extension ExerciseTrainingView {
         
         // メインアクターでUI更新
         await MainActor.run {
-            let (poseKeypoints, formClassification, inferenceTime) = result
+            let (poseKeypoints, formClassificationResult, inferenceTime) = result
             
             self.mlModelManager.updatePerformanceMetrics(inferenceTime: inferenceTime)
             
@@ -271,6 +288,8 @@ extension ExerciseTrainingView {
                let filteredKeypoints = FilteredKeypoints(from: poseKeypoints) {
                 // 実際のAI結果を使用
                 let analysisResult = self.formAnalyzer.analyzeForm(keypoints: filteredKeypoints)
+                // FormClassification.ResultからFormClassificationを取り出す
+                let formClassification = formClassificationResult?.classification
                 self.repCounter.updateState(analysisResult: analysisResult, formClassification: formClassification)
             }
         }
@@ -281,6 +300,7 @@ extension ExerciseTrainingView {
 // MARK: - Settings View
 struct ExerciseSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var audioFeedbackService = AudioFeedbackService()
     @AppStorage("debugMode") private var debugMode = false
     @AppStorage("showDebugInfo") private var showDebugInfo = false
     @AppStorage("topThreshold") private var topThreshold = 130.0
@@ -289,6 +309,21 @@ struct ExerciseSettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section("音声フィードバック") {
+                    Toggle("フォーム指導音声", isOn: $audioFeedbackService.isAudioEnabled)
+                    
+                    if !audioFeedbackService.isAudioEnabled {
+                        Text("音声フィードバック機能が無効になっています")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button("音声テスト") {
+                        testAudioFeedback()
+                    }
+                    .disabled(!audioFeedbackService.isAudioEnabled || audioFeedbackService.currentlyPlaying)
+                }
+                
                 Section("デバッグ") {
                     Toggle("デバッグモード", isOn: $debugMode)
                     Toggle("デバッグ情報表示", isOn: $showDebugInfo)
@@ -311,13 +346,16 @@ struct ExerciseSettingsView: View {
                     Slider(value: $bottomThreshold, in: 80...110, step: 5)
                 }
                 
-                Section("アプリ情報") {
+                Section(footer: voicevoxCreditFooter) {
                     HStack {
                         Text("バージョン")
                         Spacer()
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .foregroundColor(.secondary)
                     }
+                    
+                    Link("ライセンス情報", destination: URL(string: "https://voicevox.hiroshiba.jp/")!)
+                        .foregroundColor(.blue)
                 }
             }
             .navigationTitle("設定")
@@ -329,6 +367,33 @@ struct ExerciseSettingsView: View {
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func testAudioFeedback() {
+        // フォームエラー音声のテスト再生
+        let testResult = FormClassification.Result(
+            classification: .elbowError,
+            confidence: 0.9
+        )
+        audioFeedbackService.processFormResult(testResult, isInExerciseZone: true)
+    }
+    
+    private var voicevoxCreditFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("音声合成: VOICEVOX (ずんだもん)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("VOICEVOX:ずんだもん")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("本アプリで使用している音声は、VOICEVOXを使用して生成されています。")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 }

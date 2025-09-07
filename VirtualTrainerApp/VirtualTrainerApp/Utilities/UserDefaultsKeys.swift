@@ -36,6 +36,9 @@ enum UserDefaultsKeys {
     static let showKeypoints = "showKeypoints"
     static let showDebugInfo = "showDebugInfo"
     static let showPerformanceStats = "showPerformanceStats"
+    
+    // MARK: - Audio Feedback Settings
+    static let audioFeedbackEnabled = "audioFeedbackEnabled"
 }
 
 /// UserDefaultsのデフォルト値
@@ -59,7 +62,8 @@ extension UserDefaultsKeys {
             crashReportingEnabled: true,
             showKeypoints: true,
             showDebugInfo: false,
-            showPerformanceStats: false
+            showPerformanceStats: false,
+            audioFeedbackEnabled: true
         ]
         
         UserDefaults.standard.register(defaults: defaults)

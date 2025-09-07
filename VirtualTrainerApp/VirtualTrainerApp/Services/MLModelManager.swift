@@ -13,6 +13,7 @@ class MLModelManager: ObservableObject {
     @Published var loadingError: AppError?
     @Published var lastInferenceTime: TimeInterval = 0.0
     @Published var lastDetectedPose: PoseKeypoints?
+    @Published var lastFormResult: FormClassification.Result?
     
     // MARK: - Private Properties
     private var poseModel: VNCoreMLModel?
@@ -193,11 +194,11 @@ class MLModelManager: ObservableObject {
     // MARK: - Form Classification
     
     /// GRUモデルを使ったフォーム分類
-    func classifyForm(features: [[Float]]) async -> FormClassification {
+    func classifyForm(features: [[Float]]) async -> FormClassification.Result {
         guard let formModel = formModel,
               features.count >= 10 else {
             // モデルが利用できない場合やデータが不足している場合は模擬結果を返す
-            return generateMockFormClassification()
+            return generateMockFormClassificationResult()
         }
         
         return await withCheckedContinuation { continuation in
@@ -216,7 +217,8 @@ class MLModelManager: ObservableObject {
                     let prediction = try formModel.prediction(from: input)
                     
                     guard let outputArray = prediction.featureValue(for: "prediction")?.multiArrayValue else {
-                        continuation.resume(returning: .ready)
+                        let fallbackResult = FormClassification.Result(classification: .ready, confidence: 0.0)
+                        continuation.resume(returning: fallbackResult)
                         return
                     }
                     
@@ -231,11 +233,22 @@ class MLModelManager: ObservableObject {
                         classification = .tooFast
                     }
                     
-                    continuation.resume(returning: classification)
+                    let result = FormClassification.Result(
+                        classification: classification,
+                        confidence: confidence
+                    )
+                    
+                    // メインアクターでPublishedプロパティを更新
+                    Task { @MainActor in
+                        self.lastFormResult = result
+                    }
+                    
+                    continuation.resume(returning: result)
                     
                 } catch {
-                    print("❌ フォーム分類エラー: \\(error)")
-                    continuation.resume(returning: .ready)
+                    print("❌ フォーム分類エラー: \(error)")
+                    let fallbackResult = FormClassification.Result(classification: .ready, confidence: 0.0)
+                    continuation.resume(returning: fallbackResult)
                 }
             }
         }
@@ -270,8 +283,92 @@ class MLModelManager: ObservableObject {
     }
     
     private func generateMockFormClassification() -> FormClassification {
-        let classifications: [FormClassification] = [.normal, .elbowError, .tooFast, .ready]
-        return classifications.randomElement() ?? .normal
+        // 実際の肘の角度に基づいて判定（モックでも現実的な値を返す）
+        if let lastPose = lastDetectedPose {
+            // 左右の肩、肘、手首のインデックス
+            let leftShoulder = lastPose.points[5]
+            let rightShoulder = lastPose.points[6]
+            let leftElbow = lastPose.points[7]
+            let rightElbow = lastPose.points[8]
+            let leftWrist = lastPose.points[9]
+            let rightWrist = lastPose.points[10]
+            
+            // 手首が肩より上にあるかチェック（エクササイズゾーン外）
+            let avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2
+            let avgWristY = (leftWrist.y + rightWrist.y) / 2
+            
+            // エクササイズゾーン外（手首が肩より下）の場合はReadyを返す
+            if avgWristY > avgShoulderY {
+                return .ready
+            }
+            
+            // 肘の角度を計算
+            let leftAngle = calculateAngle(p1: leftShoulder, p2: leftElbow, p3: leftWrist)
+            let rightAngle = calculateAngle(p1: rightShoulder, p2: rightElbow, p3: rightWrist)
+            let avgAngle = (leftAngle + rightAngle) / 2.0
+            
+            // 角度に基づいてフォーム判定
+            // 165度以上: 肘が開きすぎ（エラー）- 閾値を少し上げる
+            // 130-165度: 正常
+            // 130度未満: 曲げている状態（正常）
+            if avgAngle > 165 {
+                return .elbowError
+            } else if avgAngle < 50 {
+                return .tooFast
+            } else {
+                return .normal
+            }
+        }
+        
+        // デフォルトは準備状態
+        return .ready
+    }
+    
+    private func calculateAngle(p1: CGPoint, p2: CGPoint, p3: CGPoint) -> Double {
+        let v1 = CGVector(dx: p1.x - p2.x, dy: p1.y - p2.y)
+        let v2 = CGVector(dx: p3.x - p2.x, dy: p3.y - p2.y)
+        
+        let dotProduct = v1.dx * v2.dx + v1.dy * v2.dy
+        let magnitude1 = sqrt(v1.dx * v1.dx + v1.dy * v1.dy)
+        let magnitude2 = sqrt(v2.dx * v2.dx + v2.dy * v2.dy)
+        
+        if magnitude1 == 0 || magnitude2 == 0 {
+            return 0
+        }
+        
+        let cosAngle = dotProduct / (magnitude1 * magnitude2)
+        let angle = acos(min(max(cosAngle, -1), 1)) * 180 / .pi
+        
+        return angle
+    }
+    
+    private func generateMockFormClassificationResult() -> FormClassification.Result {
+        let classification = generateMockFormClassification()
+        
+        // 分類に基づいて信頼度を設定
+        let confidence: Float
+        switch classification {
+        case .elbowError:
+            confidence = Float.random(in: 0.7...0.9)  // エラーは高めの信頼度
+        case .normal:
+            confidence = Float.random(in: 0.8...0.95) // 正常も高めの信頼度
+        case .tooFast:
+            confidence = Float.random(in: 0.6...0.75) // 速すぎは中程度
+        case .ready:
+            confidence = Float.random(in: 0.5...0.6)  // 準備は低め
+        }
+        
+        let result = FormClassification.Result(
+            classification: classification,
+            confidence: confidence
+        )
+        
+        // メインアクターでPublishedプロパティを更新
+        Task { @MainActor in
+            self.lastFormResult = result
+        }
+        
+        return result
     }
     
     // MARK: - Performance Monitoring

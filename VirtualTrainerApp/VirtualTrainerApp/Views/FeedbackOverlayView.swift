@@ -5,6 +5,7 @@ struct FeedbackOverlayView: View {
     @ObservedObject var formAnalyzer: FormAnalyzer
     @ObservedObject var repCounter: RepCounterManager
     @ObservedObject var mlModelManager: MLModelManager
+    @ObservedObject var audioFeedbackService: AudioFeedbackService
     @State private var lastFormState: FormClassification = .ready
     @State private var showingZoneChange = false
     @State private var lastDetectedKeypoints: PoseKeypoints?
@@ -45,6 +46,12 @@ struct FeedbackOverlayView: View {
     
     private var topFeedbackArea: some View {
         VStack(spacing: 12) {
+            // 音声フィードバック状態インジケーター
+            if audioFeedbackService.currentlyPlaying {
+                audioFeedbackIndicator
+                    .transition(.opacity.combined(with: .scale))
+            }
+            
             // フォーム状態の大きな表示
             formStatusDisplay
             
@@ -54,6 +61,23 @@ struct FeedbackOverlayView: View {
                     .transition(.opacity.combined(with: .scale))
             }
         }
+    }
+    
+    private var audioFeedbackIndicator: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "speaker.wave.2.fill")
+                .font(.caption)
+                .foregroundColor(.orange)
+            
+            Text("音声指導中")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.black.opacity(0.6))
+        .cornerRadius(16)
     }
     
     private var formStatusDisplay: some View {
@@ -262,7 +286,8 @@ struct FeedbackOverlayView: View {
                 counter.repState.state = .bottom
                 return counter
             }(),
-            mlModelManager: MLModelManager()
+            mlModelManager: MLModelManager(),
+            audioFeedbackService: AudioFeedbackService()
         )
     }
 }
@@ -283,7 +308,8 @@ struct FeedbackOverlayView: View {
                 counter.repState.count = 5
                 return counter
             }(),
-            mlModelManager: MLModelManager()
+            mlModelManager: MLModelManager(),
+            audioFeedbackService: AudioFeedbackService()
         )
         .onAppear {
             var settings = AppSettings.shared
