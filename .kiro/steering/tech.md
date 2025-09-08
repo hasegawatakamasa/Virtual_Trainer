@@ -43,9 +43,15 @@ polars==1.33.0            # High-performance data frames
 scipy==1.16.1             # Scientific computing
 matplotlib==3.10.6        # Visualization
 
+# HTTP and Requests
+requests==2.32.5          # HTTP library for web requests
+urllib3==2.5.0            # HTTP client library
+certifi==2025.8.3         # Certificate verification
+
 # System and Utilities
 psutil==7.0.0             # System monitoring and resource management
 setuptools==80.9.0        # Python package management
+PyYAML==6.0.2             # YAML configuration parsing
 ```
 
 ### Development Environment
@@ -106,10 +112,12 @@ import MetricKit                 // Performance monitoring
 ## Audio Feedback System
 
 ### VOICEVOX Integration
-- **Voice Synthesis**: ずんだもん character voice using VOICEVOX-generated audio files
-- **Audio Files**: WAV format, locally stored in app bundle
-- **Content**: Japanese voice feedback for form correction and rep counting
-- **License Compliance**: Proper VOICEVOX attribution and licensing
+- **Multi-Character System**: ずんだもん・四国めたん の2キャラクター対応
+- **Voice Synthesis**: VOICEVOX-generated audio files for each character
+- **Audio Files**: WAV format, キャラクター別サブディレクトリ構成でapp bundleに格納
+- **Content**: Japanese voice feedback for form correction, rep counting, and speed guidance
+- **Character Selection**: Runtime character switching with persistent user preferences  
+- **License Compliance**: Character-specific VOICEVOX attribution and licensing
 
 ### iOS Audio Architecture
 ```swift
@@ -124,9 +132,17 @@ import AVFoundation              // AVAudioPlayer and AVAudioSession
 ### Audio File Structure
 ```
 Resources/Audio/
-├── zundamon_elbow_error.wav    // Form error feedback
-├── 1.wav through 10.wav        // Rep counting (1-10)
-└── README.md                   // Setup instructions
+├── ずんだもん/                    // ずんだもん character audio files
+│   ├── zundamon_form_error.wav           // Form error feedback
+│   ├── zundamon_fast_warning.wav         // Speed warning
+│   ├── zundamon_slow_encouragement.wav   // Speed encouragement
+│   └── zundamon_count_01.wav - 10.wav    // Rep counting (1-10)
+├── 四国めたん/                    // 四国めたん character audio files  
+│   ├── shikoku_form_error.wav            // Form error feedback
+│   ├── shikoku_fast_warning.wav          // Speed warning
+│   ├── shikoku_slow_encouragement.wav    // Speed encouragement
+│   └── shikoku_count_01.wav - 10.wav     // Rep counting (1-10)
+└── README.md                            // Setup instructions
 ```
 
 ### Key iOS Components
@@ -134,11 +150,14 @@ Resources/Audio/
 - **CameraManager**: AVFoundation カメラセッション管理
 - **FormAnalyzer**: リアルタイムフォーム分析エンジンと種目別設定対応
 - **RepCounterManager**: 自動回数カウント状態機械
-- **AudioFeedbackService**: VOICEVOX音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック）
+- **AudioFeedbackService**: マルチキャラクター音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック）
+- **VoiceSettings**: キャラクター選択管理とUserDefaults連携
 - **SpeedAnalyzer**: 動作速度分析とリアルタイム速度フィードバック
 - **KeypointOverlayView**: COCO-Pose 17ポイント可視化
 - **ExerciseSelectionView**: 種目選択画面とナビゲーション管理
 - **ExerciseCardView**: 種目表示カードコンポーネント
+- **VoiceCharacterSettingsView**: 音声キャラクター選択とプレビュー画面
+- **CreditDisplayView**: VOICEVOXクレジット表示
 
 ### Performance Optimization
 - **Neural Engine**: A12 Bionic+ チップの専用AI処理ユニット活用

@@ -25,12 +25,14 @@ class CameraManager: NSObject, ObservableObject {
     private let dataOutputQueue = DispatchQueue(label: "camera.data.output.queue", qos: .userInteractive)
     
     weak var delegate: CameraOutputDelegate?
+    private let cleanupCoordinator = ResourceCleanupCoordinator()
     
     // MARK: - Initialization
     override init() {
         super.init()
         setupSession()
         observePermissionStatus()
+        registerCleanupHandlers()
     }
     
     // MARK: - Public Methods
@@ -86,8 +88,14 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    /// セッション停止
-    func stopSession() {
+    /// セッション停止（改善版）
+    /// ResourceCleanupCoordinatorを使用した確実なリソース解放
+    func stopSession() async {
+        await stopSessionWithCleanup()
+    }
+    
+    /// 同期版セッション停止（後方互換性のため保持）
+    func stopSessionSync() {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
             
@@ -100,6 +108,25 @@ class CameraManager: NSObject, ObservableObject {
                 self.isSessionRunning = false
             }
         }
+    }
+    
+    /// クリーンアップ付きセッション停止
+    private func stopSessionWithCleanup() async {
+        print("[CameraManager] Starting session cleanup process")
+        
+        // クリーンアップ開始
+        let cleanupSuccess = await cleanupCoordinator.initiateCleanup()
+        
+        if !cleanupSuccess {
+            handleError(.cameraUnavailable)
+            // エラーが発生してもセッション停止は継続
+        }
+        
+        await MainActor.run {
+            isSessionRunning = false
+        }
+        
+        print("[CameraManager] Session cleanup completed successfully: \(cleanupSuccess)")
     }
     
     /// カメラ切り替え
@@ -270,6 +297,70 @@ private extension CameraManager {
             self?.currentError = error
         }
         delegate?.cameraManager(self, didEncounterError: error)
+        
+        // 新しいエラー回復処理を追加
+        Task {
+            await handleCameraError(error)
+        }
+    }
+    
+    /// カメラエラーの回復処理
+    private func handleCameraError(_ error: AppError) async {
+        let cameraError: CameraSessionError
+        
+        switch error {
+        case .cameraPermissionDenied:
+            cameraError = .permissionDenied
+        case .cameraUnavailable:
+            cameraError = .sessionNotFound
+        default:
+            cameraError = .sessionFailedToStop
+        }
+        
+        await ErrorRecoveryManager.shared.handleCameraError(cameraError)
+    }
+    
+    /// クリーンアップハンドラーの登録
+    private func registerCleanupHandlers() {
+        cleanupCoordinator.registerCleanupHandler("camera") { [weak self] in
+            await self?.performCameraCleanup()
+        }
+    }
+    
+    /// カメラリソースのクリーンアップ処理
+    private func performCameraCleanup() async {
+        return await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                guard let self = self else {
+                    continuation.resume()
+                    return
+                }
+                
+                print("[CameraManager] Performing camera cleanup")
+                
+                // セッション停止
+                if self.captureSession.isRunning {
+                    self.captureSession.stopRunning()
+                }
+                
+                // 入力出力の削除
+                self.captureSession.beginConfiguration()
+                
+                if let videoInput = self.videoDeviceInput {
+                    self.captureSession.removeInput(videoInput)
+                    self.videoDeviceInput = nil
+                }
+                
+                if self.captureSession.outputs.contains(self.videoDataOutput) {
+                    self.captureSession.removeOutput(self.videoDataOutput)
+                }
+                
+                self.captureSession.commitConfiguration()
+                
+                print("[CameraManager] Camera cleanup completed")
+                continuation.resume()
+            }
+        }
     }
 }
 
@@ -302,15 +393,48 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
 // MARK: - Lifecycle Management
 extension CameraManager {
     
-    /// アプリがバックグラウンドに移行した時の処理
+    /// アプリがバックグラウンドに移行した時の処理（強化版）
     func handleAppDidEnterBackground() {
-        stopSession()
+        Task {
+            await stopSession()
+            print("[CameraManager] Background cleanup completed successfully")
+        }
     }
     
-    /// アプリがフォアグラウンドに復帰した時の処理
+    /// アプリがフォアグラウンドに復帰した時の処理（強化版）
     func handleAppWillEnterForeground() {
-        if permissionStatus == .authorized {
-            startSession()
+        Task {
+            // クリーンアップ状態をリセット
+            await resetCleanupState()
+            
+            if permissionStatus == .authorized {
+                startSession()
+                print("[CameraManager] Foreground restoration completed successfully")
+            } else {
+                print("[CameraManager] Camera permission not authorized, skipping session start")
+            }
         }
+    }
+    
+    /// クリーンアップ状態のリセット
+    private func resetCleanupState() async {
+        cleanupCoordinator.reset()
+        registerCleanupHandlers()
+        print("[CameraManager] Cleanup state reset completed")
+    }
+    
+    /// 緊急時のリソース強制解放
+    func forceReleaseResources() async {
+        print("[CameraManager] Executing force resource release")
+        
+        await performCameraCleanup()
+        cleanupCoordinator.reset()
+        
+        await MainActor.run {
+            isSessionRunning = false
+            currentError = nil
+        }
+        
+        print("[CameraManager] Force resource release completed")
     }
 }

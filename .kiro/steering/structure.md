@@ -100,9 +100,17 @@ VirtualTrainerApp/VirtualTrainerApp/
 ```
 Resources/Audio/
 ├── README.md                     # Setup instructions for audio files
-├── .gitkeep                     # Ensures directory tracking in Git  
-├── zundamon_elbow_error.wav     # Form error feedback (VOICEVOX ずんだもん)
-└── 1.wav - 10.wav               # Rep counting audio files (1-10 in Japanese)
+├── .gitkeep                     # Ensures directory tracking in Git
+├── ずんだもん/                    # ずんだもん character audio files
+│   ├── zundamon_form_error.wav           # Form error feedback
+│   ├── zundamon_fast_warning.wav         # Speed warning
+│   ├── zundamon_slow_encouragement.wav   # Speed encouragement
+│   └── zundamon_count_01.wav - 10.wav    # Rep counting (1-10)
+└── 四国めたん/                    # 四国めたん character audio files
+    ├── shikoku_form_error.wav            # Form error feedback
+    ├── shikoku_fast_warning.wav          # Speed warning
+    ├── shikoku_slow_encouragement.wav    # Speed encouragement
+    └── shikoku_count_01.wav - 10.wav     # Rep counting (1-10)
 ```
 
 **Note**: Audio files (*.wav) are currently populated in the development environment. For new setups, developers can copy files from `AI_Model/sounds/` or generate new ones using VOICEVOX following instructions in `Resources/Audio/README.md`.
@@ -120,21 +128,23 @@ Models/
 ├── ExerciseSession.swift   # Workout session data model
 ├── ExerciseType.swift      # Exercise type definitions and metadata
 ├── SpeedFeedback.swift     # Speed analysis and feedback state models
-└── VoiceCharacter.swift    # Voice character definitions for audio feedback
+└── VoiceCharacter.swift    # Multi-character voice system (ずんだもん・四国めたん) with settings management
 ```
 
 #### Views (`Views/`)
 ```
 Views/
-├── ExerciseSelectionView.swift   # Exercise selection screen with grid layout
-├── ExerciseCardView.swift        # Individual exercise card component
-├── ExerciseDetailView.swift      # Exercise details and start button
-├── LastWorkoutSection.swift      # Previous workout display section
-├── ExerciseTrainingView.swift    # Main training interface
-├── CameraPreviewView.swift       # Camera feed display
-├── KeypointOverlayView.swift     # Pose skeleton visualization
-├── FeedbackOverlayView.swift     # Real-time feedback UI
-└── PermissionView.swift          # Camera permission requests
+├── ExerciseSelectionView.swift       # Exercise selection screen with grid layout
+├── ExerciseCardView.swift            # Individual exercise card component
+├── ExerciseDetailView.swift          # Exercise details and start button
+├── LastWorkoutSection.swift          # Previous workout display section
+├── ExerciseTrainingView.swift        # Main training interface
+├── CameraPreviewView.swift           # Camera feed display
+├── KeypointOverlayView.swift         # Pose skeleton visualization
+├── FeedbackOverlayView.swift         # Real-time feedback UI
+├── VoiceCharacterSettingsView.swift  # Voice character selection and preview screen
+├── CreditDisplayView.swift           # VOICEVOX license and credit display
+└── PermissionView.swift              # Camera permission requests
 ```
 
 #### Services (`Services/`)

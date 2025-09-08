@@ -19,6 +19,7 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 - `exercise-selection-screen`: ユーザー体験改善のためのトレーニング種目選択画面の新規実装（現在はオーバーヘッドプレスのみ、将来の拡張対応）
 - `speed-feedback-enhancement`: オーバーヘッドプレス動作速度に応じたずんだもん音声フィードバック機能（速すぎる警告・応援音声）
 - `voice-character-shikoku-metan-integration`: 四国めたん音声キャラクター追加と設定画面での音声キャラ選択機能（回数カウント、フォームエラー、速度フィードバック対応）
+- `camera-session-bug-fixes`: カメラビューからの退出時にカメラセッション・音声フィードバックが継続する問題とUI改善の修正
 - Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 

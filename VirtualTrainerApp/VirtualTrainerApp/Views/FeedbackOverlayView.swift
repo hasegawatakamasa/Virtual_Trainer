@@ -7,8 +7,11 @@ struct FeedbackOverlayView: View {
     @ObservedObject var mlModelManager: MLModelManager
     @ObservedObject var audioFeedbackService: AudioFeedbackService
     @State private var lastFormState: FormClassification = .ready
-    @State private var showingZoneChange = false
     @State private var lastDetectedKeypoints: PoseKeypoints?
+    
+    // DisplayState統合
+    @State private var currentDisplayStates: Set<DisplayState> = []
+    @StateObject private var audioTextQueue = AudioTextQueue()
     
     var body: some View {
         ZStack {
@@ -26,19 +29,43 @@ struct FeedbackOverlayView: View {
             // メインフィードバック表示
             VStack {
                 // 上部：フォーム状態表示
-                topFeedbackArea
+                if shouldShow(.formMonitoring) {
+                    topFeedbackArea
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+                
+                Spacer()
+                
+                // 中央：ライブ音声テキスト表示
+                if shouldShow(.liveAudioText), let currentText = audioTextQueue.currentText {
+                    liveAudioTextDisplay(for: currentText)
+                        .transition(.scale.combined(with: .opacity))
+                }
                 
                 Spacer()
                 
                 // 下部：回数とセッション情報
-                bottomInfoArea
+                if shouldShow(.exerciseZone) {
+                    bottomInfoArea
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
             }
             .padding()
+            .animation(.easeInOut(duration: 0.3), value: currentDisplayStates)
             
             // デバッグ情報（デバッグモード時のみ）
             if AppSettings.shared.showDebugInfo {
                 debugOverlay
             }
+        }
+        .onAppear {
+            updateDisplayStates()
+        }
+        .onReceive(formAnalyzer.$isInExerciseZone) { _ in
+            updateDisplayStates()
+        }
+        .onReceive(audioFeedbackService.$currentlyPlaying) { _ in
+            updateDisplayStates()
         }
     }
     
@@ -46,44 +73,16 @@ struct FeedbackOverlayView: View {
     
     private var topFeedbackArea: some View {
         VStack(spacing: 12) {
-            // 音声フィードバック状態インジケーター
-            if audioFeedbackService.currentlyPlaying {
-                audioFeedbackIndicator
-                    .transition(.opacity.combined(with: .scale))
-            }
-            
-            // 速度フィードバック表示（デバッグモード時）
+            // 速度フィードバック表示（デバッグモード時のみ）
             if AppSettings.shared.showDebugInfo {
                 speedFeedbackIndicator
             }
             
             // フォーム状態の大きな表示
             formStatusDisplay
-            
-            // エクササイズゾーン状態
-            if formAnalyzer.isInExerciseZone || showingZoneChange {
-                exerciseZoneIndicator
-                    .transition(.opacity.combined(with: .scale))
-            }
         }
     }
     
-    private var audioFeedbackIndicator: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "speaker.wave.2.fill")
-                .font(.caption)
-                .foregroundColor(.orange)
-            
-            Text("音声指導中")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.black.opacity(0.6))
-        .cornerRadius(16)
-    }
     
     private var speedFeedbackIndicator: some View {
         HStack(spacing: 8) {
@@ -125,33 +124,6 @@ struct FeedbackOverlayView: View {
         .animation(.easeInOut(duration: 0.3), value: formAnalyzer.isInExerciseZone)
     }
     
-    private var exerciseZoneIndicator: some View {
-        HStack {
-            Image(systemName: "target")
-                .foregroundColor(.green)
-            
-            Text("エクササイズゾーン")
-                .font(.subheadline)
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.green.opacity(0.3))
-        .cornerRadius(15)
-        .onAppear {
-            // ゾーン入場時のアニメーション
-            withAnimation(.easeInOut(duration: 0.5)) {
-                showingZoneChange = true
-            }
-            
-            // 一定時間後に非表示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showingZoneChange = false
-                }
-            }
-        }
-    }
     
     // MARK: - Bottom Info Area
     
@@ -256,11 +228,13 @@ struct FeedbackOverlayView: View {
     // MARK: - Computed Properties
     
     private var formStateText: String {
+        // エクササイズゾーン外の場合は準備中
         if !formAnalyzer.isInExerciseZone {
             return "準備中"
         }
         
-        // TODO: 実際のフォーム分類結果を使用
+        // エクササイズゾーン内の場合は適切に状態を更新
+        // TODO: 実際のフォーム分類結果に基づく詳細な状態管理
         return "フォーム監視中"
     }
     
@@ -269,17 +243,17 @@ struct FeedbackOverlayView: View {
             return "person.crop.circle"
         }
         
-        // TODO: フォーム分類結果に基づいてアイコンを変更
-        return "checkmark.circle.fill"
+        // エクササイズゾーン内の場合は監視中アイコン
+        return "eye.circle.fill"
     }
     
     private var formStateColor: (red: Double, green: Double, blue: Double) {
         if !formAnalyzer.isInExerciseZone {
-            return (red: 1.0, green: 1.0, blue: 1.0) // 白
+            return (red: 1.0, green: 1.0, blue: 1.0) // 白（準備中）
         }
         
-        // TODO: フォーム分類結果に基づいて色を変更
-        return (red: 0.0, green: 1.0, blue: 0.0) // 緑
+        // エクササイズゾーン内の場合は監視中の色（青）
+        return (red: 0.0, green: 0.7, blue: 1.0) // 青（監視中）
     }
     
     private var sessionDurationText: String {
@@ -287,6 +261,168 @@ struct FeedbackOverlayView: View {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    // MARK: - Live Audio Text Display
+    
+    /// ライブ音声テキスト表示
+    @ViewBuilder
+    private func liveAudioTextDisplay(for audioText: AudioTextData) -> some View {
+        VStack(spacing: 12) {
+            // キャラクター名表示
+            HStack(spacing: 8) {
+                Text(audioText.character.displayName)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white.opacity(0.9))
+                
+                Spacer()
+                
+                // 音声再生インジケーター
+                HStack(spacing: 3) {
+                    ForEach(0..<3, id: \.self) { index in
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(Color.white.opacity(0.8))
+                            .frame(width: 3, height: 8)
+                            .scaleEffect(y: 0.5 + 0.5 * CGFloat(sin(Date().timeIntervalSince1970 * 3 + Double(index) * 0.3)))
+                            .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: audioText.id)
+                    }
+                }
+            }
+            
+            // メインテキスト表示（5m離れた位置から見やすいよう大きめに）
+            Text(audioText.displayText)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(hex: audioText.displayColor).opacity(0.9),
+                            Color(hex: audioText.displayColor).opacity(0.7)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+    
+    // MARK: - DisplayState Management
+    
+    /// 指定されたDisplayStateを表示すべきかを判定
+    private func shouldShow(_ state: DisplayState) -> Bool {
+        switch state {
+        case .liveAudioText:
+            // ライブ音声テキストは音声再生中のみ表示
+            return audioFeedbackService.currentlyPlaying && shouldShowAudioText()
+            
+        case .formMonitoring:
+            // フォーム監視状態は常に表示（音声再生の有無に関係なく）
+            return true
+            
+        case .exerciseZone:
+            // エクササイズゾーン内の場合は回数表示エリアを常に表示
+            return formAnalyzer.isInExerciseZone
+            
+        default:
+            return false
+        }
+    }
+    
+    /// 現在の表示状態を更新（onAppear/onReceiveで呼び出し）
+    private func updateDisplayStates() {
+        DispatchQueue.main.async {
+            var newStates: Set<DisplayState> = []
+            
+            // フォーム監視状態（常に有効）
+            newStates.insert(.formMonitoring)
+            
+            // エクササイズゾーン状態
+            if formAnalyzer.isInExerciseZone {
+                newStates.insert(.exerciseZone)
+            }
+            
+            // ライブ音声テキスト状態（表示すべき音声タイプの場合のみ）
+            if audioFeedbackService.currentlyPlaying && shouldShowAudioText() {
+                newStates.insert(.liveAudioText)
+                
+                // 音声テキストデータを作成してキューに渡す
+                if let audioText = createAudioTextData() {
+                    audioTextQueue.enqueue(audioText)
+                }
+            }
+            
+            if newStates != currentDisplayStates {
+                currentDisplayStates = newStates
+            }
+        }
+    }
+    
+    /// 音声テキストを表示すべきかを判定
+    private func shouldShowAudioText() -> Bool {
+        guard let currentTaskType = audioFeedbackService.currentAudioType else { return false }
+        
+        // カウント音声以外のみテキスト表示
+        switch currentTaskType {
+        case .repCount:
+            return false // カウント音声は表示しない
+        case .speedFeedback, .formError:
+            return true // 速度フィードバックとフォームエラーは表示
+        }
+    }
+    
+    /// 現在の音声状態からAudioTextDataを作成
+    private func createAudioTextData() -> AudioTextData? {
+        guard audioFeedbackService.currentlyPlaying,
+              let currentTaskType = audioFeedbackService.currentAudioType else { return nil }
+        
+        let character = VoiceSettings.shared.selectedCharacter
+        
+        // 音声タイプに応じてテキストと表示可否を判定
+        switch currentTaskType {
+        case .speedFeedback:
+            // 速度フィードバックタイプに応じてテキスト表示
+            guard let speedFeedbackType = audioFeedbackService.currentSpeedFeedbackType else { return nil }
+            
+            let audioType: AudioType = speedFeedbackType == .tooSlow ? .slowEncouragement : .fastWarning
+            let text = speedFeedbackType.displayText
+            
+            return AudioTextData(
+                text: text,
+                character: character,
+                audioType: audioType,
+                estimatedDuration: 2.0,
+                isActive: true
+            )
+            
+        case .formError:
+            // フォームエラーの場合もテキスト表示
+            return AudioTextData(
+                text: "フォームを確認してください",
+                character: character,
+                audioType: .formError,
+                estimatedDuration: 3.0,
+                isActive: true
+            )
+            
+        case .repCount:
+            // カウント音声の場合は表示しない
+            return nil
+        }
     }
 }
 

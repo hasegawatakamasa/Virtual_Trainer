@@ -20,6 +20,21 @@ enum AudioTaskType: Int, CaseIterable {
     }
 }
 
+/// 速度フィードバックの種類
+enum SpeedFeedbackType {
+    case tooSlow
+    case tooFast
+    
+    var displayText: String {
+        switch self {
+        case .tooSlow:
+            return "がんばれ！"
+        case .tooFast:
+            return "もう少しゆっくり！"
+        }
+    }
+}
+
 /// 音声再生タスク
 struct AudioTask {
     let type: AudioTaskType
@@ -75,6 +90,8 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     @Published var currentlyPlaying: Bool = false
     @Published var lastFeedbackTime: Date?
     @Published var lastSpeedFeedbackTime: Date?
+    @Published var currentAudioType: AudioTaskType?
+    @Published var currentSpeedFeedbackType: SpeedFeedbackType?
     
     // MARK: - Private Properties
     private var audioPlayer: AVAudioPlayer?
@@ -84,6 +101,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let warmupPeriod: TimeInterval = 2.0  // エクササイズゾーン入場後2秒間は音声を再生しない
     private let repCountCooldownInterval: TimeInterval = 1.0  // 回数カウント音声のクールダウン
     private let voiceSettings = VoiceSettings.shared  // ボイス設定
+    private let cleanupCoordinator = ResourceCleanupCoordinator()  // クリーンアップ協調
     
     // 音声キューシステム
     private var audioQueue: [AudioTask] = []
@@ -100,6 +118,9 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         if isAudioEnabled {
             setupAudioSession()
         }
+        
+        // クリーンアップハンドラーを登録
+        registerCleanupHandlers()
     }
     
     // MARK: - Public Methods
@@ -140,12 +161,30 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             audioPlayer?.stop()
             audioPlayer = nil
             currentlyPlaying = false
+            currentAudioType = nil
+            currentSpeedFeedbackType = nil
             print("[AudioFeedbackService] Audio feedback stopped")
         }
         
         // キューをクリア
         audioQueue.removeAll()
         isProcessingQueue = false
+    }
+    
+    /// クリーンアップ付きの音声停止（非同期版）
+    func stopWithCleanup() async -> Bool {
+        print("[AudioFeedbackService] Starting audio cleanup process")
+        
+        // ResourceCleanupCoordinatorを使用した協調クリーンアップ
+        let cleanupSuccess = await cleanupCoordinator.initiateCleanup()
+        
+        if !cleanupSuccess {
+            print("[AudioFeedbackService] Audio cleanup partially failed, forcing stop")
+            await forceStopAllAudio()
+        }
+        
+        print("[AudioFeedbackService] Audio cleanup completed successfully: \(cleanupSuccess)")
+        return cleanupSuccess
     }
     
     /// 回数カウント音声の再生
@@ -198,16 +237,23 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         }
         
-        // 速度に応じた音声ファイルを取得
+        // 速度に応じた音声ファイルと表示タイプを設定
         let audioType: AudioType
+        let speedFeedbackType: SpeedFeedbackType
+        
         switch speed {
         case .fast:
             audioType = .fastWarning
+            speedFeedbackType = .tooFast
         case .slow:
             audioType = .slowEncouragement
+            speedFeedbackType = .tooSlow
         case .normal:
             return // Normal speed doesn't need feedback
         }
+        
+        // 現在の速度フィードバックタイプを設定
+        currentSpeedFeedbackType = speedFeedbackType
         
         // 現在選択されているキャラクターから音声ファイルURLを取得
         guard let audioURL = voiceSettings.selectedCharacter.audioFileURL(for: audioType) else {
@@ -370,6 +416,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             
             if audioPlayer?.play() == true {
                 currentlyPlaying = true
+                currentAudioType = task.type
                 updateLastFeedbackTime(for: task.type)
                 print("[AudioFeedbackService] Successfully started playing \(task.type.displayName)")
             } else {
@@ -443,6 +490,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         Task { @MainActor in
             if player === self.audioPlayer {
                 self.currentlyPlaying = false
+                self.currentAudioType = nil
                 self.isProcessingQueue = false
                 print("[AudioFeedbackService] Audio playback finished successfully: \(flag)")
                 
@@ -456,6 +504,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         Task { @MainActor in
             if player === self.audioPlayer {
                 self.currentlyPlaying = false
+                self.currentAudioType = nil
                 self.isProcessingQueue = false
                 if let error = error {
                     print("[AudioFeedbackService] Audio decode error: \(error)")
@@ -464,6 +513,67 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 // キューの次のアイテムを処理
                 self.processAudioQueue()
             }
+        }
+    }
+    
+    // MARK: - Cleanup Methods
+    
+    /// クリーンアップハンドラーの登録
+    private func registerCleanupHandlers() {
+        cleanupCoordinator.registerCleanupHandler("audio") { [weak self] in
+            await self?.performAudioCleanup()
+        }
+    }
+    
+    /// 音声リソースのクリーンアップ処理
+    private func performAudioCleanup() async {
+        print("[AudioFeedbackService] Performing audio cleanup")
+        
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                // 現在の再生を停止
+                if self.currentlyPlaying {
+                    self.audioPlayer?.stop()
+                    self.audioPlayer = nil
+                    self.currentlyPlaying = false
+                }
+                
+                // キューをクリア
+                self.audioQueue.removeAll()
+                self.isProcessingQueue = false
+                
+                // AVAudioSessionを無効化
+                await self.deactivateAudioSession()
+                
+                print("[AudioFeedbackService] Audio cleanup completed")
+                continuation.resume()
+            }
+        }
+    }
+    
+    /// 強制音声停止
+    private func forceStopAllAudio() async {
+        await MainActor.run {
+            print("[AudioFeedbackService] Force stopping all audio")
+            
+            audioPlayer?.stop()
+            audioPlayer = nil
+            currentlyPlaying = false
+            audioQueue.removeAll()
+            isProcessingQueue = false
+        }
+        
+        await deactivateAudioSession()
+    }
+    
+    /// AVAudioSessionの無効化
+    private func deactivateAudioSession() async {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            print("[AudioFeedbackService] Audio session deactivated successfully")
+        } catch {
+            print("[AudioFeedbackService] Failed to deactivate audio session: \(error)")
         }
     }
 }

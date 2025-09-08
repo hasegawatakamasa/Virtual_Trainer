@@ -18,6 +18,11 @@ struct ExerciseTrainingView: View {
     @State private var lastProcessingTime = Date()
     @Environment(\.dismiss) private var dismiss
     
+    // 統合クリーンアップサービス（遅延初期化）
+    private var integratedCleanupService: IntegratedCleanupService {
+        IntegratedCleanupService(cameraManager: cameraManager, audioFeedbackService: audioFeedbackService)
+    }
+    
     // デフォルトイニシャライザー（既存コードとの互換性）
     init(exerciseType: ExerciseType = .overheadPress) {
         self.exerciseType = exerciseType
@@ -41,21 +46,17 @@ struct ExerciseTrainingView: View {
                 audioFeedbackService: audioFeedbackService
             )
             
-            // 種目名表示
+            // 種目名表示（中央配置）
             VStack {
-                HStack {
-                    Text(exerciseType.displayName)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.6))
-                        .cornerRadius(20)
-                    
-                    Spacer()
-                }
-                .padding(.top, 80)
+                Text(exerciseType.displayName)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.6))
+                    .cornerRadius(20)
+                    .padding(.top, 80)
                 
                 Spacer()
             }
@@ -144,12 +145,6 @@ struct ExerciseTrainingView: View {
                     }
                 }
                 
-                // VOICEVOXクレジット表示
-                HStack {
-                    CreditDisplayView()
-                        .foregroundColor(.white.opacity(0.7))
-                    Spacer()
-                }
             }
             .padding()
         }
@@ -219,8 +214,13 @@ struct ExerciseTrainingView: View {
     }
     
     private func cleanup() {
-        cameraManager.stopSession()
-        audioFeedbackService.stopCurrentFeedback()
+        Task {
+            let cleanupSuccess = await integratedCleanupService.performIntegratedCleanup()
+            if !cleanupSuccess {
+                print("[ExerciseTrainingView] Standard cleanup failed, performing emergency cleanup")
+                await integratedCleanupService.performEmergencyCleanup()
+            }
+        }
         cancellables.removeAll()
     }
     
