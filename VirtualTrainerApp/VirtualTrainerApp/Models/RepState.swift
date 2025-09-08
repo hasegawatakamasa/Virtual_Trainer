@@ -94,6 +94,7 @@ enum RepCountEvent {
     case zoneEntered
     case zoneExited
     case sessionReset
+    case speedFeedbackNeeded(speed: ExerciseSpeed)
 }
 
 /// 回数カウント履歴のエントリ

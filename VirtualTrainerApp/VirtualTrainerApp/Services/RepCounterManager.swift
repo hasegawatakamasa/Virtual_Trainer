@@ -13,6 +13,8 @@ class RepCounterManager: ObservableObject {
     private let config: RepCounterConfig
     private var eventSubject = PassthroughSubject<RepCountEvent, Never>()
     private var exerciseType: ExerciseType
+    private(set) var speedAnalyzer: SpeedAnalyzer
+    private var keypointsCollected: [FilteredKeypoints] = []
     
     // MARK: - Public Properties
     
@@ -25,6 +27,7 @@ class RepCounterManager: ObservableObject {
     init(exerciseType: ExerciseType = .overheadPress, config: RepCounterConfig = AppSettings.shared.createRepCounterConfig()) {
         self.exerciseType = exerciseType
         self.config = config
+        self.speedAnalyzer = SpeedAnalyzer()
         startNewSession()
     }
     
@@ -34,6 +37,11 @@ class RepCounterManager: ObservableObject {
     func updateState(analysisResult: FormAnalysisResult, formClassification: FormClassification? = nil) {
         let angle = analysisResult.elbowAngle
         let inZone = analysisResult.isInExerciseZone
+        
+        // キーポイントデータを収集（速度分析用）
+        if inZone && repState.state == .bottom {
+            keypointsCollected.append(analysisResult.keypoints)
+        }
         
         updateState(angle: angle, inZone: inZone, formClassification: formClassification)
     }
@@ -78,6 +86,8 @@ class RepCounterManager: ObservableObject {
                     print("📉 TOP -> BOTTOM (\(String(format: "%.1f", angle))°)")
                 }
                 repState.state = .bottom
+                // 新しいrep開始時にキーポイント履歴をクリア
+                keypointsCollected.removeAll()
                 stateChanged = true
             }
             
@@ -104,6 +114,10 @@ class RepCounterManager: ObservableObject {
     
     /// 回数を手動でカウント
     func incrementCount(angle: Double = 0.0, formClassification: FormClassification? = nil) {
+        // 速度分析を実行
+        let keypointsCount = keypointsCollected.count
+        let currentSpeed = speedAnalyzer.analyzeSpeed(keypointsCount: keypointsCount, isExerciseActive: repState.isInZone)
+        
         repState.count += 1
         
         // 履歴に記録
@@ -126,8 +140,18 @@ class RepCounterManager: ObservableObject {
         // 統計更新
         AppSettings.shared.totalRepCount += 1
         
-        // イベント通知
+        // イベント通知（速度情報付き）
         eventSubject.send(.repCompleted(count: repState.count))
+        
+        // 速度フィードバック用のイベント送信（必要に応じて）
+        if currentSpeed.needsFeedback && speedAnalyzer.shouldPlayFeedback(for: currentSpeed, isExerciseActive: repState.isInZone) {
+            eventSubject.send(.speedFeedbackNeeded(speed: currentSpeed))
+            // recordFeedbackPlayedは実際に音声が再生された後に呼ばれるべき
+        }
+        
+        if config.debugMode {
+            print("🏃 Speed Analysis: \(currentSpeed.displayName) (keypoints: \(keypointsCount))")
+        }
         
     }
     

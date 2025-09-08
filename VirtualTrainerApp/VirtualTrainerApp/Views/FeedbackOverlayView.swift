@@ -52,6 +52,11 @@ struct FeedbackOverlayView: View {
                     .transition(.opacity.combined(with: .scale))
             }
             
+            // 速度フィードバック表示（デバッグモード時）
+            if AppSettings.shared.showDebugInfo {
+                speedFeedbackIndicator
+            }
+            
             // フォーム状態の大きな表示
             formStatusDisplay
             
@@ -77,6 +82,23 @@ struct FeedbackOverlayView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color.black.opacity(0.6))
+        .cornerRadius(16)
+    }
+    
+    private var speedFeedbackIndicator: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "speedometer")
+                .font(.caption)
+                .foregroundColor(.blue)
+            
+            Text("速度フィードバック有効")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.blue.opacity(0.3))
         .cornerRadius(16)
     }
     

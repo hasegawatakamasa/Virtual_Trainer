@@ -4,7 +4,6 @@ import SwiftUI
 struct ExerciseSelectionView: View {
     @State private var selectedExercise: ExerciseType?
     @AppStorage("lastSelectedExercise") private var lastSelectedExerciseRaw: String = ExerciseType.overheadPress.rawValue
-    @State private var showingExerciseDetail = false
     
     // 前回選択した種目
     private var lastSelectedExercise: ExerciseType {
@@ -29,10 +28,8 @@ struct ExerciseSelectionView: View {
         }
         .navigationTitle("種目選択")
         .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $showingExerciseDetail) {
-            if let exercise = selectedExercise {
-                ExerciseDetailView(exercise: exercise)
-            }
+        .sheet(item: $selectedExercise) { exercise in
+            ExerciseDetailView(exercise: exercise)
         }
         .onAppear {
             // 初回起動時の設定
@@ -123,12 +120,12 @@ struct ExerciseSelectionView: View {
             return
         }
         
-        selectedExercise = exercise
-        showingExerciseDetail = true
-        
         // 最後に選択した種目を保存
         lastSelectedExerciseRaw = exercise.rawValue
         AppSettings.shared.lastSelectedExercise = exercise
+        
+        // シートを表示
+        selectedExercise = exercise
     }
 }
 

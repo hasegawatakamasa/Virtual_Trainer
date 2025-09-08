@@ -13,38 +13,36 @@ struct ExerciseDetailView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // ヘッダー
-                    headerSection
-                    
-                    // 基本情報
-                    basicInfoSection
-                    
-                    // 詳細情報
-                    detailInfoSection
-                    
-                    // 注意事項とポイント
-                    tipsSection
-                    
-                    Spacer(minLength: 100) // ボタンのための余白
-                }
-                .padding()
+        ScrollView {
+            VStack(spacing: 24) {
+                // ヘッダー
+                headerSection
+                
+                // 基本情報
+                basicInfoSection
+                
+                // 詳細情報
+                detailInfoSection
+                
+                // 注意事項とポイント
+                tipsSection
+                
+                Spacer(minLength: 100) // ボタンのための余白
             }
-            .navigationTitle(exercise.displayName)
-            .navigationBarTitleDisplayMode(.large)
-            .navigationBarBackButtonHidden(false)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
+            .padding()
+        }
+        .navigationTitle(exercise.displayName)
+        .navigationBarTitleDisplayMode(.large)
+        .navigationBarBackButtonHidden(false)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("閉じる") {
+                    dismiss()
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                startButton
-            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            startButton
         }
         .fullScreenCover(isPresented: $showingTrainingView) {
             print("🎬 FullScreenCover presenting ExerciseTrainingView for \(exercise.displayName)")

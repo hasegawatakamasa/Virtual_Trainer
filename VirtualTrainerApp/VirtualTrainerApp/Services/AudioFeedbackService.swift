@@ -3,6 +3,38 @@ import SwiftUI
 import Combine
 import AVFoundation
 
+/// 音声タスクの種類と優先度
+enum AudioTaskType: Int, CaseIterable {
+    case repCount = 1        // 最高優先度：回数カウント
+    case formError = 2       // 高優先度：フォームエラー
+    case speedFeedback = 3   // 低優先度：速度フィードバック
+    
+    var priority: Int { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .repCount: return "Rep Count"
+        case .formError: return "Form Error"
+        case .speedFeedback: return "Speed Feedback"
+        }
+    }
+}
+
+/// 音声再生タスク
+struct AudioTask {
+    let type: AudioTaskType
+    let audioURL: URL
+    let timestamp: Date
+    let metadata: [String: Any]
+    
+    init(type: AudioTaskType, audioURL: URL, metadata: [String: Any] = [:]) {
+        self.type = type
+        self.audioURL = audioURL
+        self.timestamp = Date()
+        self.metadata = metadata
+    }
+}
+
 /// フォームエラー音声フィードバック機能のエラー定義
 enum AudioFeedbackError: LocalizedError {
     case audioFileNotFound
@@ -42,15 +74,20 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     @Published var currentlyPlaying: Bool = false
     @Published var lastFeedbackTime: Date?
+    @Published var lastSpeedFeedbackTime: Date?
     
     // MARK: - Private Properties
     private var audioPlayer: AVAudioPlayer?
     private let feedbackCooldownInterval: TimeInterval = 3.0
-    private let audioFileName = "zundamon_elbow_error.wav"
     private var cancellables = Set<AnyCancellable>()
     private var exerciseZoneEntryTime: Date?
     private let warmupPeriod: TimeInterval = 2.0  // エクササイズゾーン入場後2秒間は音声を再生しない
     private let repCountCooldownInterval: TimeInterval = 1.0  // 回数カウント音声のクールダウン
+    private let voiceSettings = VoiceSettings.shared  // ボイス設定
+    
+    // 音声キューシステム
+    private var audioQueue: [AudioTask] = []
+    private var isProcessingQueue = false
     
     // MARK: - Initialization
     override init() {
@@ -105,13 +142,20 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             currentlyPlaying = false
             print("[AudioFeedbackService] Audio feedback stopped")
         }
+        
+        // キューをクリア
+        audioQueue.removeAll()
+        isProcessingQueue = false
     }
     
     /// 回数カウント音声の再生
     func playRepCountAudio(count: Int) {
         guard isAudioEnabled else { return }
-        guard count >= 1 && count <= 10 else {
-            print("[AudioFeedbackService] Rep count out of range: \(count)")
+        
+        // 11以上の場合は10の音声を再生（音声ファイルは1-10のみ）
+        let audioCount = min(count, 10)
+        guard audioCount >= 1 else {
+            print("[AudioFeedbackService] Rep count invalid: \(count)")
             return
         }
         
@@ -131,29 +175,70 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         
         // 回数音声ファイルの読み込み
-        guard let audioURL = loadRepCountAudioFile(count: count) else {
-            print("[AudioFeedbackService] Failed to load rep count audio file: \(count)")
+        guard let audioURL = voiceSettings.selectedCharacter.audioFileURL(for: .repCount(audioCount)) else {
+            print("[AudioFeedbackService] Rep count audio file not found for character: \(voiceSettings.selectedCharacter.displayName), count: \(audioCount)")
             return
         }
         
-        do {
-            // AVAudioPlayerを作成
-            audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            audioPlayer?.delegate = self
-            audioPlayer?.prepareToPlay()
-            
-            // 音声再生開始
-            if audioPlayer?.play() == true {
-                currentlyPlaying = true
-                lastFeedbackTime = Date()
-                print("[AudioFeedbackService] Playing rep count audio: \(count)")
-            } else {
-                print("[AudioFeedbackService] Failed to start rep count playback")
+        // 音声タスクをキューに追加
+        let task = AudioTask(type: .repCount, audioURL: audioURL, metadata: ["count": count])
+        enqueueAudioTask(task)
+    }
+    
+    /// 速度フィードバック音声の再生
+    func playSpeedFeedback(_ speed: ExerciseSpeed) {
+        guard isAudioEnabled else { return }
+        
+        // 速度フィードバック専用のクールダウンチェック
+        if let lastTime = lastSpeedFeedbackTime {
+            let timeSinceLastFeedback = Date().timeIntervalSince(lastTime)
+            if timeSinceLastFeedback < feedbackCooldownInterval {
+                print("[AudioFeedbackService] Skipping speed feedback - cooldown active")
+                return
             }
-            
-        } catch {
-            print("[AudioFeedbackService] Failed to create rep count audio player: \(error)")
         }
+        
+        // 速度に応じた音声ファイルを取得
+        let audioType: AudioType
+        switch speed {
+        case .fast:
+            audioType = .fastWarning
+        case .slow:
+            audioType = .slowEncouragement
+        case .normal:
+            return // Normal speed doesn't need feedback
+        }
+        
+        // 現在選択されているキャラクターから音声ファイルURLを取得
+        guard let audioURL = voiceSettings.selectedCharacter.audioFileURL(for: audioType) else {
+            print("[AudioFeedbackService] Speed feedback audio file not found for character: \(voiceSettings.selectedCharacter.displayName), type: \(audioType)")
+            return
+        }
+        
+        // 音声タスクをキューに追加
+        let task = AudioTask(type: .speedFeedback, audioURL: audioURL, metadata: ["speed": speed.rawValue])
+        enqueueAudioTask(task)
+    }
+    
+    /// 速度フィードバック音声ファイルの事前読み込み確認
+    func validateSpeedFeedbackAudio() -> Bool {
+        let character = voiceSettings.selectedCharacter
+        let audioTypes: [AudioType] = [.slowEncouragement, .fastWarning]
+        
+        var allFilesExist = true
+        
+        for audioType in audioTypes {
+            if character.audioFileURL(for: audioType) == nil {
+                print("[AudioFeedbackService] Missing speed feedback audio file for character: \(character.displayName), type: \(audioType)")
+                allFilesExist = false
+            }
+        }
+        
+        if allFilesExist {
+            print("[AudioFeedbackService] All speed feedback audio files validated successfully for character: \(character.displayName)")
+        }
+        
+        return allFilesExist
     }
     
     // MARK: - Private Methods
@@ -172,156 +257,162 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    /// 音声ファイルの読み込み
-    private func loadAudioFile() -> URL? {
-        // まず、subdirectoryなしで試す（最も一般的）
-        if let audioURL = Bundle.main.url(forResource: "zundamon_elbow_error", withExtension: "wav") {
-            print("[AudioFeedbackService] Audio file found at: \(audioURL.path)")
-            return audioURL
-        }
+    // MARK: - Audio Queue System
+    
+    /// 音声タスクをキューに追加
+    private func enqueueAudioTask(_ task: AudioTask) {
+        print("[AudioFeedbackService] Enqueuing \(task.type.displayName) audio task")
         
-        // 次に、Audioディレクトリ内を試す
-        if let audioURL = Bundle.main.url(forResource: "zundamon_elbow_error", withExtension: "wav", subdirectory: "Audio") {
-            print("[AudioFeedbackService] Audio file found in Audio directory: \(audioURL.path)")
-            return audioURL
-        }
+        // 同じ種類のタスクが既にキューにある場合は置き換え（最新を優先）
+        audioQueue.removeAll { $0.type == task.type }
         
-        // 最後に、Resources/Audioを試す
-        if let audioURL = Bundle.main.url(forResource: "zundamon_elbow_error", withExtension: "wav", subdirectory: "Resources/Audio") {
-            print("[AudioFeedbackService] Audio file found in Resources/Audio: \(audioURL.path)")
-            return audioURL
-        }
+        // 優先度に基づいてキューに挿入
+        audioQueue.append(task)
+        audioQueue.sort { $0.type.priority < $1.type.priority }
         
-        print("[AudioFeedbackService] Audio file not found: \(audioFileName)")
-        print("[AudioFeedbackService] Bundle resource path: \(Bundle.main.resourcePath ?? "nil")")
-        return nil
+        // キューの処理を開始
+        processAudioQueue()
     }
     
-    /// 回数カウント音声ファイルの読み込み
-    private func loadRepCountAudioFile(count: Int) -> URL? {
-        let fileName = "\(count)"
-        
-        // まず、subdirectoryなしで試す
-        if let audioURL = Bundle.main.url(forResource: fileName, withExtension: "wav") {
-            print("[AudioFeedbackService] Rep count audio file found at: \(audioURL.path)")
-            return audioURL
+    /// 音声キューの処理
+    private func processAudioQueue() {
+        guard !isProcessingQueue else { return }
+        guard !audioQueue.isEmpty else { return }
+        guard !currentlyPlaying else {
+            print("[AudioFeedbackService] Audio currently playing, will process queue after completion")
+            return
         }
         
-        // 次に、Audioディレクトリ内を試す
-        if let audioURL = Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: "Audio") {
-            print("[AudioFeedbackService] Rep count audio file found in Audio directory: \(audioURL.path)")
-            return audioURL
+        isProcessingQueue = true
+        
+        // 最高優先度のタスクを取得
+        guard let task = audioQueue.first else {
+            isProcessingQueue = false
+            return
         }
         
-        // 最後に、Resources/Audioを試す
-        if let audioURL = Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: "Resources/Audio") {
-            print("[AudioFeedbackService] Rep count audio file found in Resources/Audio: \(audioURL.path)")
-            return audioURL
-        }
+        // キューから削除
+        audioQueue.removeFirst()
         
-        print("[AudioFeedbackService] Rep count audio file not found: \(fileName).wav")
-        return nil
+        // 実際に音声を再生
+        playAudioTask(task)
     }
     
-    /// 音声ファイルの検証
-    private func validateAudioFile() -> Bool {
-        guard let audioURL = loadAudioFile() else {
-            return false
+    /// 音声タスクの実際の再生
+    private func playAudioTask(_ task: AudioTask) {
+        print("[AudioFeedbackService] Playing \(task.type.displayName) audio")
+        
+        // クールダウンチェック
+        if shouldSkipDueToCooldown(for: task.type) {
+            print("[AudioFeedbackService] Skipping \(task.type.displayName) due to cooldown")
+            isProcessingQueue = false
+            // キューの次のアイテムを処理
+            DispatchQueue.main.async {
+                self.processAudioQueue()
+            }
+            return
         }
         
-        // ファイルの存在確認
-        let fileExists = FileManager.default.fileExists(atPath: audioURL.path)
-        if !fileExists {
-            print("[AudioFeedbackService] Audio file does not exist at path: \(audioURL.path)")
-            return false
-        }
-        
-        // ファイルサイズチェック（1MB以上は警告）
         do {
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: audioURL.path)
-            if let fileSize = fileAttributes[FileAttributeKey.size] as? Int64 {
-                if fileSize > 1_024_000 { // 1MB
-                    print("[AudioFeedbackService] Warning: Audio file size is large (\(fileSize) bytes)")
+            audioPlayer = try AVAudioPlayer(contentsOf: task.audioURL)
+            audioPlayer?.delegate = self
+            audioPlayer?.prepareToPlay()
+            
+            if audioPlayer?.play() == true {
+                currentlyPlaying = true
+                updateLastFeedbackTime(for: task.type)
+                print("[AudioFeedbackService] Successfully started playing \(task.type.displayName)")
+            } else {
+                print("[AudioFeedbackService] Failed to start \(task.type.displayName) playback")
+                isProcessingQueue = false
+                // 次のタスクを処理
+                DispatchQueue.main.async {
+                    self.processAudioQueue()
                 }
-                print("[AudioFeedbackService] Audio file validated - size: \(fileSize) bytes")
             }
         } catch {
-            print("[AudioFeedbackService] Failed to get file attributes: \(error)")
-            return false
+            print("[AudioFeedbackService] Error creating audio player for \(task.type.displayName): \(error)")
+            isProcessingQueue = false
+            // 次のタスクを処理
+            DispatchQueue.main.async {
+                self.processAudioQueue()
+            }
         }
-        
-        return true
     }
     
-    /// 音声ファイルサイズの取得
-    private func getAudioFileSize() -> Int64 {
-        guard let audioURL = loadAudioFile() else { return 0 }
+    /// クールダウンチェック
+    private func shouldSkipDueToCooldown(for taskType: AudioTaskType) -> Bool {
+        let now = Date()
         
-        do {
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: audioURL.path)
-            return fileAttributes[FileAttributeKey.size] as? Int64 ?? 0
-        } catch {
-            return 0
+        switch taskType {
+        case .repCount:
+            if let lastTime = lastFeedbackTime {
+                return now.timeIntervalSince(lastTime) < repCountCooldownInterval
+            }
+        case .formError:
+            if let lastTime = lastFeedbackTime {
+                return now.timeIntervalSince(lastTime) < feedbackCooldownInterval
+            }
+        case .speedFeedback:
+            if let lastTime = lastSpeedFeedbackTime {
+                return now.timeIntervalSince(lastTime) < feedbackCooldownInterval
+            }
+        }
+        
+        return false
+    }
+    
+    /// 最後のフィードバック時間を更新
+    private func updateLastFeedbackTime(for taskType: AudioTaskType) {
+        let now = Date()
+        
+        switch taskType {
+        case .repCount, .formError:
+            lastFeedbackTime = now
+        case .speedFeedback:
+            lastSpeedFeedbackTime = now
         }
     }
     
     /// 肘エラー音声フィードバックの再生
     private func playElbowErrorFeedback() {
-        // クールダウンチェック
-        if let lastTime = lastFeedbackTime {
-            let timeSinceLastFeedback = Date().timeIntervalSince(lastTime)
-            if timeSinceLastFeedback < feedbackCooldownInterval {
-                print("[AudioFeedbackService] Skipping feedback - cooldown active")
-                return
-            }
-        }
-        
-        // 既に再生中の場合はスキップ
-        guard !currentlyPlaying else { 
-            print("[AudioFeedbackService] Skipping feedback - already playing")
+        // フォームエラー音声ファイルの読み込み
+        guard let audioURL = voiceSettings.selectedCharacter.audioFileURL(for: .formError) else {
+            print("[AudioFeedbackService] Form error audio file not found for character: \(voiceSettings.selectedCharacter.displayName)")
             return
         }
         
-        // 音声ファイルの読み込みと検証
-        guard validateAudioFile(), let audioURL = loadAudioFile() else {
-            print("[AudioFeedbackService] Failed to load audio file")
-            return
-        }
-        
-        do {
-            // AVAudioPlayerを作成
-            audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-            audioPlayer?.delegate = self
-            audioPlayer?.prepareToPlay()
-            
-            // 音声再生開始
-            if audioPlayer?.play() == true {
-                currentlyPlaying = true
-                lastFeedbackTime = Date()
-                print("[AudioFeedbackService] Playing elbow error feedback")
-            } else {
-                print("[AudioFeedbackService] Failed to start playback")
-            }
-            
-        } catch {
-            print("[AudioFeedbackService] Failed to create audio player: \(error)")
-        }
+        // 音声タスクをキューに追加
+        let task = AudioTask(type: .formError, audioURL: audioURL, metadata: [:])
+        enqueueAudioTask(task)
     }
     
     // MARK: - AVAudioPlayerDelegate
     
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            currentlyPlaying = false
-            print("[AudioFeedbackService] Audio playback finished successfully: \(flag)")
+            if player === self.audioPlayer {
+                self.currentlyPlaying = false
+                self.isProcessingQueue = false
+                print("[AudioFeedbackService] Audio playback finished successfully: \(flag)")
+                
+                // キューの次のアイテムを処理
+                self.processAudioQueue()
+            }
         }
     }
     
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor in
-            currentlyPlaying = false
-            if let error = error {
-                print("[AudioFeedbackService] Audio decode error: \(error)")
+            if player === self.audioPlayer {
+                self.currentlyPlaying = false
+                self.isProcessingQueue = false
+                if let error = error {
+                    print("[AudioFeedbackService] Audio decode error: \(error)")
+                }
+                
+                // キューの次のアイテムを処理
+                self.processAudioQueue()
             }
         }
     }

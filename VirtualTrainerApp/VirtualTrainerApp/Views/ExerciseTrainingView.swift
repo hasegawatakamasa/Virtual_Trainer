@@ -257,6 +257,16 @@ struct ExerciseTrainingView: View {
             // リセット時の通知フィードバック
             let notificationFeedback = UINotificationFeedbackGenerator()
             notificationFeedback.notificationOccurred(.success)
+            
+        case .speedFeedbackNeeded(let speed):
+            // 速度フィードバック音声の再生
+            audioFeedbackService.playSpeedFeedback(speed)
+            // 実際に再生されたことをSpeedAnalyzerに記録
+            repCounter.speedAnalyzer.recordFeedbackPlayed()
+            
+            if AppSettings.shared.debugMode {
+                print("🏃 Speed feedback triggered: \(speed.displayName)")
+            }
         }
     }
 }
@@ -348,6 +358,7 @@ extension ExerciseTrainingView {
 struct ExerciseSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var audioFeedbackService = AudioFeedbackService()
+    @StateObject private var voiceSettings = VoiceSettings.shared
     @AppStorage("debugMode") private var debugMode = false
     @AppStorage("showDebugInfo") private var showDebugInfo = false
     @AppStorage("topThreshold") private var topThreshold = 130.0
@@ -367,6 +378,30 @@ struct ExerciseSettingsView: View {
                     
                     Button("音声テスト") {
                         testAudioFeedback()
+                    }
+                    .disabled(!audioFeedbackService.isAudioEnabled || audioFeedbackService.currentlyPlaying)
+                }
+                
+                Section("ボイスキャラクター") {
+                    Picker("音声キャラクター", selection: $voiceSettings.selectedCharacter) {
+                        ForEach(VoiceCharacter.allCases) { character in
+                            HStack {
+                                Image(systemName: character.iconName)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(character.displayName)
+                                        .font(.subheadline)
+                                    Text(character.description)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .tag(character)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    Button("キャラクター音声テスト") {
+                        testCharacterVoice()
                     }
                     .disabled(!audioFeedbackService.isAudioEnabled || audioFeedbackService.currentlyPlaying)
                 }
@@ -426,6 +461,11 @@ struct ExerciseSettingsView: View {
             confidence: 0.9
         )
         audioFeedbackService.processFormResult(testResult, isInExerciseZone: true)
+    }
+    
+    private func testCharacterVoice() {
+        // 速度フィードバック音声のテスト再生（励まし音声）
+        audioFeedbackService.playSpeedFeedback(.slow)
     }
     
     private var voicevoxCreditFooter: some View {

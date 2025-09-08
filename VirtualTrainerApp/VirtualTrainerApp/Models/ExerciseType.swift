@@ -1,13 +1,16 @@
 import Foundation
 
 /// エクササイズの種目を表す列挙型
-enum ExerciseType: String, CaseIterable, Codable {
+enum ExerciseType: String, CaseIterable, Codable, Identifiable {
     case overheadPress = "overhead_press"
     case squat = "squat"
     case plank = "plank"
     case pushUp = "push_up"
     case lunge = "lunge"
     case burpee = "burpee"
+    
+    /// Identifiable準拠のためのID
+    var id: String { rawValue }
     
     /// 表示用の日本語名
     var displayName: String {
