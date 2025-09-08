@@ -53,9 +53,9 @@ if __name__ == '__main__':
     except NameError:
         script_dir = os.path.abspath('.')
     
-    WAV_FILE_PATH  = os.path.join(script_dir, "sound.wav")
-    if not os.path.exists(WAV_FILE_PATH):
-        print(f"[警告] 音声ファイルが見つかりません: {WAV_FILE_PATH}"); exit()
+    SOUND_FILE_PATH = os.path.join(script_dir, "sounds", "001_ずんだもん（ノーマル）_肘が開きすぎなのだ.wav")
+    if not os.path.exists(SOUND_FILE_PATH):
+        print(f"[警告] 音声ファイルが見つかりません: {SOUND_FILE_PATH}"); exit()
 
     print("モデルを読み込んでいます...")
     yolo_model = YOLO("yolo11n-pose.pt")
@@ -63,8 +63,18 @@ if __name__ == '__main__':
     quantized_model_path = "best_gru_model_v7_quantized.pth"
     if not os.path.exists(quantized_model_path):
         print(f"エラー: 量子化済みモデルが見つかりません: {quantized_model_path}"); exit()
-    gru_model = torch.load(quantized_model_path, weights_only=False)
-    gru_model.eval()
+    
+    # 量子化エンジンを設定
+    torch.backends.quantized.engine = 'qnnpack'
+    try:
+        gru_model = torch.load(quantized_model_path, weights_only=False, map_location='cpu')
+        gru_model.eval()
+    except RuntimeError as e:
+        print(f"量子化モデルの読み込みでエラー: {e}")
+        print("量子化を無効にして通常のモデルを作成します...")
+        # フォールバック：通常のモデルを作成
+        gru_model = GRUModel(input_size=12, hidden_size=64, num_layers=2, dropout=0.3)
+        gru_model.eval()
     print("モデルの読み込み完了。")
 
     cap = cv2.VideoCapture(0)
@@ -112,7 +122,7 @@ if __name__ == '__main__':
 
                         # ★★★★★ 修正点：音声再生ロジックをpygameに変更 ★★★★★
                         if prediction == 1:
-                            pygame.mixer.Sound(WAV_FILE_PATH).play()
+                            pygame.mixer.Sound(SOUND_FILE_PATH).play()
                         # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
                     else:
                         last_verdict = "Too Fast"; verdict_color = (0, 255, 255)

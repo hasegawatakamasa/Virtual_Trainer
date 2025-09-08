@@ -3,6 +3,7 @@ import Foundation
 /// ボイスキャラクターの種類
 enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
     case zundamon = "ずんだもん"
+    case shikokuMetan = "四国めたん"
     
     /// Identifiable準拠のためのID
     var id: String { rawValue }
@@ -12,6 +13,8 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .zundamon:
             return "ずんだもん"
+        case .shikokuMetan:
+            return "四国めたん"
         }
     }
     
@@ -20,6 +23,8 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .zundamon:
             return "可愛い声で応援してくれる東北の妖精"
+        case .shikokuMetan:
+            return "優しい関西弁で励ましてくれる四国の案内人"
         }
     }
     
@@ -28,12 +33,24 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .zundamon:
             return "heart.fill"
+        case .shikokuMetan:
+            return "leaf.fill"
         }
     }
     
     /// 音声ファイルのディレクトリ名
     var directoryName: String {
         return rawValue
+    }
+    
+    /// VOICEVOX クレジット表記
+    var creditText: String {
+        switch self {
+        case .zundamon:
+            return "VOICEVOX:ずんだもん"
+        case .shikokuMetan:
+            return "VOICEVOX:四国めたん"
+        }
     }
     
     /// 音声ファイルのパス構成
@@ -54,10 +71,17 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .zundamon:
             return AudioFiles(
-                slowEncouragement: "slow_encouragement.wav",
-                fastWarning: "fast_warning.wav",
-                formError: "form_error.wav",
-                repCountPrefix: "count_"
+                slowEncouragement: "zundamon_slow_encouragement.wav",
+                fastWarning: "zundamon_fast_warning.wav",
+                formError: "zundamon_form_error.wav",
+                repCountPrefix: "zundamon_count_"
+            )
+        case .shikokuMetan:
+            return AudioFiles(
+                slowEncouragement: "shikoku_slow_encouragement.wav",
+                fastWarning: "shikoku_fast_warning.wav",
+                formError: "shikoku_form_error.wav",
+                repCountPrefix: "shikoku_count_"
             )
         }
     }
@@ -160,6 +184,16 @@ class VoiceSettings: ObservableObject {
         } else {
             self.selectedCharacter = .zundamon
         }
+    }
+    
+    /// キャラクターを更新
+    func updateCharacter(_ character: VoiceCharacter) {
+        selectedCharacter = character
+    }
+    
+    /// 現在のキャラクターのクレジット文字列を取得
+    func getCurrentCreditText() -> String {
+        return selectedCharacter.creditText
     }
 }
 

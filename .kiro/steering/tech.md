@@ -15,9 +15,13 @@
 - **Core ML**: iOS向けオンデバイス推論エンジン
 
 ### Model Conversion Pipeline
-- **PyTorch → Core ML**: `convert_models_system.py`を使用した自動変換
-- **ONNX互換性**: `onnx_to_coreml.py`による中間フォーマット対応
-- **量子化対応**: `best_gru_model_v7_quantized.pth`による軽量化
+- **Primary Conversion**: `convert_models.py` - メイン変換スクリプト
+- **System-wide Conversion**: `convert_models_system.py` - 包括的変換パイプラインとエラーハンドリング
+- **PyTorch → ONNX**: `convert_models_onnx.py` - ONNX中間フォーマット変換
+- **ONNX → Core ML**: `onnx_to_coreml.py` - iOS向け最適化とCore ML変換
+- **YOLO専用**: `convert_yolo_only.py` - YOLO11nポーズ専用変換
+- **GRU初期化**: `create_fresh_gru.py` - 新規GRUモデル作成とアーキテクチャ設定
+- **量子化対応**: `best_gru_model_v7_quantized.pth` - 軽量化済みGRUモデル
 
 ## Python Implementation
 
@@ -27,6 +31,7 @@
 torch==2.8.0              # PyTorch for deep learning
 torchvision==0.23.0       # Computer vision utilities
 ultralytics==8.3.195      # YOLO implementation
+ultralytics-thop==2.0.17  # YOLO model profiling and optimization
 
 # Computer Vision
 opencv-python==4.12.0.88  # Image processing and camera handling
@@ -37,6 +42,10 @@ pillow==11.3.0            # Image manipulation
 polars==1.33.0            # High-performance data frames
 scipy==1.16.1             # Scientific computing
 matplotlib==3.10.6        # Visualization
+
+# System and Utilities
+psutil==7.0.0             # System monitoring and resource management
+setuptools==80.9.0        # Python package management
 ```
 
 ### Development Environment
@@ -55,8 +64,13 @@ venv\Scripts\activate     # Windows
 # Dependencies Installation
 pip install -r AI_Model/requirements.txt
 
-# Model Conversion
-python convert_models_system.py
+# Model Conversion (Multiple Options)
+python convert_models.py                # Primary model conversion script
+python convert_models_system.py         # Comprehensive conversion pipeline
+python convert_models_onnx.py           # PyTorch to ONNX conversion
+python onnx_to_coreml.py                # ONNX to Core ML conversion
+python convert_yolo_only.py             # YOLO model-only conversion
+python create_fresh_gru.py              # Create new GRU model
 
 # Application Launch
 python AI_Model/main.py
@@ -118,10 +132,13 @@ Resources/Audio/
 ### Key iOS Components
 - **MLModelManager**: Core ML モデル管理とオンデバイス推論
 - **CameraManager**: AVFoundation カメラセッション管理
-- **FormAnalyzer**: リアルタイムフォーム分析エンジン
+- **FormAnalyzer**: リアルタイムフォーム分析エンジンと種目別設定対応
 - **RepCounterManager**: 自動回数カウント状態機械
-- **AudioFeedbackService**: VOICEVOX音声フィードバック管理とAVAudioPlayer制御
+- **AudioFeedbackService**: VOICEVOX音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック）
+- **SpeedAnalyzer**: 動作速度分析とリアルタイム速度フィードバック
 - **KeypointOverlayView**: COCO-Pose 17ポイント可視化
+- **ExerciseSelectionView**: 種目選択画面とナビゲーション管理
+- **ExerciseCardView**: 種目表示カードコンポーネント
 
 ### Performance Optimization
 - **Neural Engine**: A12 Bionic+ チップの専用AI処理ユニット活用
@@ -182,10 +199,15 @@ export GRU_MODEL_PATH="./AI_Model/best_gru_model_v7_quantized.pth"
 # Development Build
 python AI_Model/main.py
 
-# Model Conversion
-python convert_models_system.py
+# Model Conversion Options
+python convert_models.py                # Primary conversion script
+python convert_models_system.py         # Complete pipeline with error handling
+python convert_models_onnx.py           # PyTorch to ONNX only
+python onnx_to_coreml.py                # ONNX to Core ML only
+python convert_yolo_only.py             # YOLO conversion only
+python create_fresh_gru.py              # New GRU model setup
 
-# Sound Version (Future)
+# Sound-Enhanced Version
 python AI_Model/main_sound.py
 ```
 

@@ -115,31 +115,40 @@ struct ExerciseTrainingView: View {
             Spacer()
             
             // 下部コントロール
-            HStack {
-                // リセットボタン
-                Button(action: { resetSession() }) {
-                    Label("リセット", systemImage: "arrow.counterclockwise")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red.opacity(0.6))
-                        .cornerRadius(20)
-                }
-                
-                Spacer()
-                
-                // 手動カウントボタン（デバッグモード時のみ）
-                if AppSettings.shared.debugMode {
-                    Button(action: { manualCount() }) {
-                        Label("+1", systemImage: "plus.circle.fill")
+            VStack(spacing: 12) {
+                HStack {
+                    // リセットボタン
+                    Button(action: { resetSession() }) {
+                        Label("リセット", systemImage: "arrow.counterclockwise")
                             .font(.subheadline)
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.6))
+                            .background(Color.red.opacity(0.6))
                             .cornerRadius(20)
                     }
+                    
+                    Spacer()
+                    
+                    // 手動カウントボタン（デバッグモード時のみ）
+                    if AppSettings.shared.debugMode {
+                        Button(action: { manualCount() }) {
+                            Label("+1", systemImage: "plus.circle.fill")
+                                .font(.subheadline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.blue.opacity(0.6))
+                                .cornerRadius(20)
+                        }
+                    }
+                }
+                
+                // VOICEVOXクレジット表示
+                HStack {
+                    CreditDisplayView()
+                        .foregroundColor(.white.opacity(0.7))
+                    Spacer()
                 }
             }
             .padding()

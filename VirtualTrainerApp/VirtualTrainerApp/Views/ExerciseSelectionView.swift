@@ -3,6 +3,7 @@ import SwiftUI
 /// 種目選択画面のメインビュー
 struct ExerciseSelectionView: View {
     @State private var selectedExercise: ExerciseType?
+    @State private var showingVoiceSettings = false
     @AppStorage("lastSelectedExercise") private var lastSelectedExerciseRaw: String = ExerciseType.overheadPress.rawValue
     
     // 前回選択した種目
@@ -31,6 +32,9 @@ struct ExerciseSelectionView: View {
         .sheet(item: $selectedExercise) { exercise in
             ExerciseDetailView(exercise: exercise)
         }
+        .sheet(isPresented: $showingVoiceSettings) {
+            VoiceCharacterSettingsView()
+        }
         .onAppear {
             // 初回起動時の設定
             if AppSettings.shared.isFirstLaunch {
@@ -55,6 +59,17 @@ struct ExerciseSelectionView: View {
                 }
                 
                 Spacer()
+                
+                // 音声設定ボタン
+                Button(action: {
+                    showingVoiceSettings = true
+                }) {
+                    Image(systemName: "speaker.wave.2")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                        .frame(width: 32, height: 32)
+                }
+                .accessibilityLabel("音声キャラクター設定")
                 
                 // トレーニングアイコン
                 Image(systemName: "figure.strengthtraining.traditional")

@@ -241,6 +241,56 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         return allFilesExist
     }
     
+    /// 現在選択されているキャラクターの音声を再生
+    func playAudioForCurrentCharacter(audioType: AudioType) {
+        guard isAudioEnabled else { return }
+        
+        let character = voiceSettings.selectedCharacter
+        print("[AudioFeedbackService] Attempting to play \(audioType) for character: \(character.displayName)")
+        
+        // 音声ファイルURL取得（フォールバック機能付き）
+        guard let audioURL = getAudioURLWithFallback(for: audioType, character: character) else {
+            print("[AudioFeedbackService] No audio file found for \(audioType) with any character")
+            return
+        }
+        
+        let task = AudioTask(type: audioTypeToTaskType(audioType), audioURL: audioURL, metadata: ["character": character.rawValue])
+        enqueueAudioTask(task)
+    }
+    
+    /// フォールバック機能付きの音声URL取得
+    private func getAudioURLWithFallback(for audioType: AudioType, character: VoiceCharacter) -> URL? {
+        // 1. 指定されたキャラクターの音声ファイルを試行
+        if let url = character.audioFileURL(for: audioType) {
+            print("[AudioFeedbackService] Found audio file for \(character.displayName): \(url.lastPathComponent)")
+            return url
+        }
+        
+        // 2. デフォルトキャラクター（ずんだもん）にフォールバック
+        if character != .zundamon {
+            print("[AudioFeedbackService] Falling back to ずんだもん for \(audioType)")
+            if let fallbackURL = VoiceCharacter.zundamon.audioFileURL(for: audioType) {
+                return fallbackURL
+            }
+        }
+        
+        // 3. 音声ファイルが見つからない
+        print("[AudioFeedbackService] Audio file not found for \(audioType) with character: \(character.displayName)")
+        return nil
+    }
+    
+    /// AudioTypeをAudioTaskTypeに変換
+    private func audioTypeToTaskType(_ audioType: AudioType) -> AudioTaskType {
+        switch audioType {
+        case .repCount:
+            return .repCount
+        case .formError:
+            return .formError
+        case .slowEncouragement, .fastWarning:
+            return .speedFeedback
+        }
+    }
+    
     // MARK: - Private Methods
     
     /// AVAudioSessionのセットアップ
