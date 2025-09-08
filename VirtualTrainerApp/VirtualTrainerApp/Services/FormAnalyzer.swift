@@ -9,13 +9,23 @@ class FormAnalyzer: ObservableObject {
     @Published var currentAngle: Double = 0.0
     @Published var isInExerciseZone: Bool = false
     @Published var lastAnalysisTime: Date = Date()
+    @Published var currentExerciseType: ExerciseType = .overheadPress
     
     // MARK: - Private Properties
     private let config: RepCounterConfig
+    private var exerciseConfig: ExerciseFormConfig
     
     // MARK: - Initialization
-    init(config: RepCounterConfig = AppSettings.shared.createRepCounterConfig()) {
+    init(exerciseType: ExerciseType = .overheadPress, config: RepCounterConfig = AppSettings.shared.createRepCounterConfig()) {
+        self.currentExerciseType = exerciseType
         self.config = config
+        self.exerciseConfig = ExerciseFormConfig.forExercise(exerciseType)
+    }
+    
+    /// エクササイズタイプを変更
+    func setExerciseType(_ exerciseType: ExerciseType) {
+        currentExerciseType = exerciseType
+        exerciseConfig = ExerciseFormConfig.forExercise(exerciseType)
     }
     
     // MARK: - Public Methods
@@ -61,8 +71,8 @@ class FormAnalyzer: ObservableObject {
         let avgShoulderY = (keypoints.leftShoulder.y + keypoints.rightShoulder.y) / 2.0
         
         // Y座標系では上が小さい値なので、手首Y < 肩Y の場合に「上にある」
-        // 少しマージンを持たせて判定を緩くする（肩より少し下でもOK）
-        let margin = 20.0  // ピクセル単位のマージン
+        // 種目別のマージンを適用
+        let margin = exerciseConfig.exerciseZoneMargin
         let inZone = avgWristY < (avgShoulderY + margin)
         
         
@@ -199,19 +209,98 @@ enum FormQuality: String, CaseIterable {
     }
     
     /// 角度に基づいてフォーム品質を評価
-    static func evaluate(angle: Double, inZone: Bool) -> FormQuality {
+    static func evaluate(angle: Double, inZone: Bool, config: ExerciseFormConfig = .default) -> FormQuality {
         guard inZone else { return .poor }
         
-        // 理想的な角度範囲での評価
+        // 種目別の理想的な角度範囲での評価
         switch angle {
-        case 80...120:
+        case config.excellentAngleRange:
             return .excellent
-        case 70...130:
+        case config.goodAngleRange:
             return .good
-        case 60...140:
+        case config.fairAngleRange:
             return .fair
         default:
             return .poor
+        }
+    }
+}
+
+/// 種目別のフォーム設定
+struct ExerciseFormConfig {
+    let exerciseType: ExerciseType
+    let excellentAngleRange: ClosedRange<Double>
+    let goodAngleRange: ClosedRange<Double>
+    let fairAngleRange: ClosedRange<Double>
+    let exerciseZoneMargin: Double
+    let primaryMuscleGroups: [String]
+    let formCheckpoints: [String]
+    
+    static let `default` = ExerciseFormConfig.forExercise(.overheadPress)
+    
+    /// 種目に応じたフォーム設定を生成
+    static func forExercise(_ exerciseType: ExerciseType) -> ExerciseFormConfig {
+        switch exerciseType {
+        case .overheadPress:
+            return ExerciseFormConfig(
+                exerciseType: .overheadPress,
+                excellentAngleRange: 80...120,
+                goodAngleRange: 70...130,
+                fairAngleRange: 60...140,
+                exerciseZoneMargin: 20.0,
+                primaryMuscleGroups: ["三角筋", "上腕三頭筋", "体幹"],
+                formCheckpoints: ["肘が体の前に出過ぎない", "腰を反らさない", "肩甲骨を安定"]
+            )
+        case .squat:
+            return ExerciseFormConfig(
+                exerciseType: .squat,
+                excellentAngleRange: 85...115,
+                goodAngleRange: 75...125,
+                fairAngleRange: 65...135,
+                exerciseZoneMargin: 30.0,
+                primaryMuscleGroups: ["大腿四頭筋", "臀筋", "ハムストリング"],
+                formCheckpoints: ["膝がつま先より前に出ない", "背中をまっすぐ", "太ももが床と平行"]
+            )
+        case .pushUp:
+            return ExerciseFormConfig(
+                exerciseType: .pushUp,
+                excellentAngleRange: 75...115,
+                goodAngleRange: 65...125,
+                fairAngleRange: 55...135,
+                exerciseZoneMargin: 15.0,
+                primaryMuscleGroups: ["胸筋", "上腕三頭筋", "体幹"],
+                formCheckpoints: ["体を一直線に保つ", "胸が床に近づく", "手は肩幅より少し広め"]
+            )
+        case .plank:
+            return ExerciseFormConfig(
+                exerciseType: .plank,
+                excellentAngleRange: 170...180,
+                goodAngleRange: 160...180,
+                fairAngleRange: 150...180,
+                exerciseZoneMargin: 10.0,
+                primaryMuscleGroups: ["腹筋", "背筋", "体幹"],
+                formCheckpoints: ["頭から足まで一直線", "お尻を上げすぎない", "肘は肩の真下"]
+            )
+        case .lunge:
+            return ExerciseFormConfig(
+                exerciseType: .lunge,
+                excellentAngleRange: 85...95,
+                goodAngleRange: 75...105,
+                fairAngleRange: 65...115,
+                exerciseZoneMargin: 25.0,
+                primaryMuscleGroups: ["大腿四頭筋", "臀筋", "バランス感覚"],
+                formCheckpoints: ["前膝が90度", "前膝がつま先より前に出ない", "体幹を安定"]
+            )
+        case .burpee:
+            return ExerciseFormConfig(
+                exerciseType: .burpee,
+                excellentAngleRange: 70...110,
+                goodAngleRange: 60...120,
+                fairAngleRange: 50...130,
+                exerciseZoneMargin: 35.0,
+                primaryMuscleGroups: ["全身", "有酸素", "筋力"],
+                formCheckpoints: ["各動作を丁寧に", "着地時膝を曲げる", "無理せず自分のペース"]
+            )
         }
     }
 }

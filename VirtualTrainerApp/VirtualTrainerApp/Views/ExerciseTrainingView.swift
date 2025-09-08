@@ -4,9 +4,11 @@ import Combine
 
 /// エクササイズトレーニングのメインビュー
 struct ExerciseTrainingView: View {
+    let exerciseType: ExerciseType
+    
     @StateObject private var cameraManager = CameraManager()
-    @StateObject private var formAnalyzer = FormAnalyzer()
-    @StateObject private var repCounter = RepCounterManager()
+    @StateObject private var formAnalyzer: FormAnalyzer
+    @StateObject private var repCounter: RepCounterManager
     @StateObject private var mlModelManager = MLModelManager()
     @StateObject private var audioFeedbackService = AudioFeedbackService()
     @State private var isProcessing = false
@@ -14,6 +16,14 @@ struct ExerciseTrainingView: View {
     @State private var showingSettings = false
     @State private var cameraOutputHandler = CameraOutputHandler()
     @State private var lastProcessingTime = Date()
+    @Environment(\.dismiss) private var dismiss
+    
+    // デフォルトイニシャライザー（既存コードとの互換性）
+    init(exerciseType: ExerciseType = .overheadPress) {
+        self.exerciseType = exerciseType
+        self._formAnalyzer = StateObject(wrappedValue: FormAnalyzer(exerciseType: exerciseType))
+        self._repCounter = StateObject(wrappedValue: RepCounterManager(exerciseType: exerciseType))
+    }
     
     var body: some View {
         ZStack {
@@ -31,10 +41,30 @@ struct ExerciseTrainingView: View {
                 audioFeedbackService: audioFeedbackService
             )
             
+            // 種目名表示
+            VStack {
+                HStack {
+                    Text(exerciseType.displayName)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(20)
+                    
+                    Spacer()
+                }
+                .padding(.top, 80)
+                
+                Spacer()
+            }
+            
             // コントロールUI
             controlOverlay
         }
         .onAppear {
+            print("🎥 ExerciseTrainingView appeared for exercise: \(exerciseType.displayName)")
             setupServices()
         }
         .onDisappear {
@@ -51,6 +81,15 @@ struct ExerciseTrainingView: View {
         VStack {
             // 上部コントロール
             HStack {
+                // 戻るボタン
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .background(Color.black.opacity(0.3))
+                        .clipShape(Circle())
+                }
+                
                 // 設定ボタン
                 Button(action: { showingSettings = true }) {
                     Image(systemName: "gearshape.fill")
@@ -118,14 +157,22 @@ struct ExerciseTrainingView: View {
         
         // カメラ権限を要求してセッション開始（少し遅延を入れてUI初期化完了を待つ）
         Task {
+            print("🎥 ExerciseTrainingView: カメラ初期化を開始")
             // UI初期化完了を待つ
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
             
+            print("🎥 カメラ権限を要求中...")
             let granted = await cameraManager.requestCameraPermission()
+            print("🎥 カメラ権限結果: \(granted)")
+            
             if granted {
+                print("🎥 カメラセッション開始中...")
                 // セッション開始も少し遅延
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1秒
                 cameraManager.startSession()
+                print("🎥 カメラセッション開始完了")
+            } else {
+                print("❌ カメラ権限が拒否されました")
             }
         }
         

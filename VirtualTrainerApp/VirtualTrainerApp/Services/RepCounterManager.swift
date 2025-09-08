@@ -12,6 +12,7 @@ class RepCounterManager: ObservableObject {
     // MARK: - Private Properties
     private let config: RepCounterConfig
     private var eventSubject = PassthroughSubject<RepCountEvent, Never>()
+    private var exerciseType: ExerciseType
     
     // MARK: - Public Properties
     
@@ -21,7 +22,8 @@ class RepCounterManager: ObservableObject {
     }
     
     // MARK: - Initialization
-    init(config: RepCounterConfig = AppSettings.shared.createRepCounterConfig()) {
+    init(exerciseType: ExerciseType = .overheadPress, config: RepCounterConfig = AppSettings.shared.createRepCounterConfig()) {
+        self.exerciseType = exerciseType
         self.config = config
         startNewSession()
     }
@@ -172,7 +174,7 @@ class RepCounterManager: ObservableObject {
     // MARK: - Private Methods
     
     private func startNewSession() {
-        currentSession = ExerciseSession()
+        currentSession = ExerciseSession(exerciseType: exerciseType)
     }
 }
 

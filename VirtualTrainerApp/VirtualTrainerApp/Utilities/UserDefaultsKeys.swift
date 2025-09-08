@@ -1,6 +1,21 @@
 import Foundation
 import AVFoundation
 
+/// エクササイズ履歴アイテム
+struct ExerciseHistoryItem: Codable {
+    let exerciseType: ExerciseType
+    let date: Date
+    let repCount: Int
+    let accuracy: Double
+    
+    init(exerciseType: ExerciseType, date: Date = Date(), repCount: Int = 0, accuracy: Double = 0.0) {
+        self.exerciseType = exerciseType
+        self.date = date
+        self.repCount = repCount
+        self.accuracy = accuracy
+    }
+}
+
 /// UserDefaultsのキー定数
 enum UserDefaultsKeys {
     // MARK: - General Settings
@@ -39,6 +54,11 @@ enum UserDefaultsKeys {
     
     // MARK: - Audio Feedback Settings
     static let audioFeedbackEnabled = "audioFeedbackEnabled"
+    
+    // MARK: - Exercise Selection Settings
+    static let lastSelectedExercise = "lastSelectedExercise"
+    static let exerciseHistory = "exerciseHistory"
+    static let defaultExercise = "defaultExercise"
 }
 
 /// UserDefaultsのデフォルト値
@@ -63,7 +83,9 @@ extension UserDefaultsKeys {
             showKeypoints: true,
             showDebugInfo: false,
             showPerformanceStats: false,
-            audioFeedbackEnabled: true
+            audioFeedbackEnabled: true,
+            lastSelectedExercise: ExerciseType.overheadPress.rawValue,
+            defaultExercise: ExerciseType.overheadPress.rawValue
         ]
         
         UserDefaults.standard.register(defaults: defaults)
@@ -148,6 +170,51 @@ struct AppSettings {
     var showDebugInfo: Bool {
         get { userDefaults.bool(forKey: UserDefaultsKeys.showDebugInfo) }
         set { userDefaults.set(newValue, forKey: UserDefaultsKeys.showDebugInfo) }
+    }
+    
+    // MARK: - Exercise Selection
+    var lastSelectedExercise: ExerciseType {
+        get {
+            let rawValue = userDefaults.string(forKey: UserDefaultsKeys.lastSelectedExercise) ?? ExerciseType.overheadPress.rawValue
+            return ExerciseType(rawValue: rawValue) ?? .overheadPress
+        }
+        set {
+            userDefaults.set(newValue.rawValue, forKey: UserDefaultsKeys.lastSelectedExercise)
+        }
+    }
+    
+    var defaultExercise: ExerciseType {
+        get {
+            let rawValue = userDefaults.string(forKey: UserDefaultsKeys.defaultExercise) ?? ExerciseType.overheadPress.rawValue
+            return ExerciseType(rawValue: rawValue) ?? .overheadPress
+        }
+        set {
+            userDefaults.set(newValue.rawValue, forKey: UserDefaultsKeys.defaultExercise)
+        }
+    }
+    
+    /// 種目選択履歴を保存
+    func saveExerciseHistory(_ item: ExerciseHistoryItem) {
+        var history = exerciseHistory
+        history.append(item)
+        
+        // 最大100件まで保持
+        if history.count > 100 {
+            history.removeFirst(history.count - 100)
+        }
+        
+        if let data = try? JSONEncoder().encode(history) {
+            userDefaults.set(data, forKey: UserDefaultsKeys.exerciseHistory)
+        }
+    }
+    
+    /// 種目選択履歴を取得
+    var exerciseHistory: [ExerciseHistoryItem] {
+        guard let data = userDefaults.data(forKey: UserDefaultsKeys.exerciseHistory),
+              let history = try? JSONDecoder().decode([ExerciseHistoryItem].self, from: data) else {
+            return []
+        }
+        return history
     }
     
     // MARK: - RepCounterConfig生成

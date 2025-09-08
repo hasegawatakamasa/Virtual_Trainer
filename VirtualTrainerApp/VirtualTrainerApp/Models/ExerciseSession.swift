@@ -8,6 +8,7 @@ struct ExerciseSession: Codable, Identifiable {
     var totalReps: Int
     var formAccuracy: Double // 0.0-1.0
     let userId: UUID
+    let exerciseType: ExerciseType // 追加: 種目タイプ
     
     /// セッション中のフォーム分類履歴
     var formHistory: [FormClassification.Result]
@@ -15,8 +16,9 @@ struct ExerciseSession: Codable, Identifiable {
     /// 回数履歴
     var repHistory: [RepHistoryEntry]
     
-    init(userId: UUID = UUID(), startTime: Date = Date()) {
+    init(exerciseType: ExerciseType, userId: UUID = UUID(), startTime: Date = Date()) {
         self.id = UUID()
+        self.exerciseType = exerciseType
         self.userId = userId
         self.startTime = startTime
         self.endTime = nil

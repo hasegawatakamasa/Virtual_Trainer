@@ -16,6 +16,7 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 
 ### Active Specifications
 - `ios-exercise-form-detection`: AI_Model/main.pyのフォーム検知＋回数カウント機能をiPhoneアプリでも実行可能にする
+- `exercise-selection-screen`: ユーザー体験改善のためのトレーニング種目選択画面の新規実装（現在はオーバーヘッドプレスのみ、将来の拡張対応）
 - Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 
