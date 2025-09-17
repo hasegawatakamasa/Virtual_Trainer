@@ -1,7 +1,9 @@
 import Foundation
 import AVFoundation
 import Combine
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// カメラ出力を受け取るためのデリゲート
 protocol CameraOutputDelegate: AnyObject {
@@ -10,7 +12,7 @@ protocol CameraOutputDelegate: AnyObject {
 }
 
 /// カメラセッション管理クラス
-class CameraManager: NSObject, ObservableObject {
+class CameraManager: NSObject, ObservableObject, @unchecked Sendable {
     // MARK: - Published Properties
     @Published var isSessionRunning = false
     @Published var cameraPosition: AVCaptureDevice.Position = .front
@@ -153,7 +155,7 @@ class CameraManager: NSObject, ObservableObject {
                     self.captureSession.addInput(newInput)
                     self.videoDeviceInput = newInput
                     
-                    DispatchQueue.main.async { [weak self] in
+                    Task { @MainActor [weak self] in
                         guard let self = self else { return }
                         self.cameraPosition = newPosition
                         var settings = AppSettings.shared
@@ -366,7 +368,7 @@ private extension CameraManager {
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
 extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
-    
+
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,

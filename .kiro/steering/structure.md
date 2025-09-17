@@ -86,9 +86,16 @@ VirtualTrainerApp/VirtualTrainerApp/
 ├── ContentView.swift               # Root view (legacy)
 ├── Info.plist                      # App configuration and permissions
 ├── VirtualTrainerApp.entitlements  # App capabilities and sandbox settings
+├── VirtualTrainerApp.xcdatamodeld/ # Core Data model definition
 ├── Assets.xcassets/                # App icons and visual assets
 ├── Preview Content/                # SwiftUI preview resources
-├── Resources/Audio/                # VOICEVOX audio files (manual setup required)
+├── Resources/                      # App resources
+│   ├── Audio/                      # VOICEVOX audio files (manual setup required)
+│   └── Image/                      # Character portrait images
+│       ├── ずんだもん/             # ずんだもん character images
+│       │   └── zundamon_1.png     # ずんだもん portrait
+│       └── 四国めたん/             # 四国めたん character images
+│           └── shikoku_metan_1.png # 四国めたん portrait (to be added)
 ├── MLModels/                       # Core ML model packages
 ├── Models/                         # Data models and structures
 ├── Views/                          # SwiftUI view components
@@ -128,7 +135,10 @@ Models/
 ├── ExerciseSession.swift   # Workout session data model
 ├── ExerciseType.swift      # Exercise type definitions and metadata
 ├── SpeedFeedback.swift     # Speed analysis and feedback state models
-└── VoiceCharacter.swift    # Multi-character voice system (ずんだもん・四国めたん) with settings management
+├── VoiceCharacter.swift    # Multi-character voice system with image support (ずんだもん・四国めたん)
+├── DisplayState.swift      # UI display state management
+├── AudioTextData.swift     # Audio feedback text data models
+└── TrainingRecord.swift    # Core Data entity for training records
 ```
 
 #### Views (`Views/`)
@@ -144,25 +154,40 @@ Views/
 ├── FeedbackOverlayView.swift         # Real-time feedback UI
 ├── VoiceCharacterSettingsView.swift  # Voice character selection and preview screen
 ├── CreditDisplayView.swift           # VOICEVOX license and credit display
-└── PermissionView.swift              # Camera permission requests
+├── PermissionView.swift              # Camera permission requests
+├── RecordsTabView.swift              # Training records and history display
+├── ProgressVisualizationView.swift   # Progress charts and statistics
+├── WeeklyChartView.swift             # Weekly training activity chart
+└── Components/
+    ├── LiveAudioTextView.swift       # Live audio feedback text display component
+    ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel
+    └── CharacterImageView.swift      # Character image loading and display
 ```
 
 #### Services (`Services/`)
 ```
 Services/
-├── MLModelManager.swift          # Core ML model loading and inference
-├── CameraManager.swift           # AVFoundation camera management
-├── FormAnalyzer.swift           # Exercise form analysis algorithms with exercise-specific settings
-├── RepCounterManager.swift      # Automatic rep counting logic
-├── SpeedAnalyzer.swift          # Movement speed analysis and feedback control
-└── AudioFeedbackService.swift   # VOICEVOX audio feedback (form, rep counting, speed feedback)
+├── MLModelManager.swift               # Core ML model loading and inference
+├── CameraManager.swift                # AVFoundation camera management
+├── FormAnalyzer.swift                # Exercise form analysis algorithms with exercise-specific settings
+├── RepCounterManager.swift           # Automatic rep counting logic
+├── SpeedAnalyzer.swift               # Movement speed analysis and feedback control
+├── AudioFeedbackService.swift        # VOICEVOX audio feedback (form, rep counting, speed feedback, achievements)
+├── CoreDataManager.swift             # Core Data stack management and persistence
+├── TrainingSessionService.swift      # Training session recording and history
+├── AchievementSystem.swift           # Achievement detection and unlocking logic
+├── OshiReactionManager.swift         # Oshi character reactions and affinity system
+├── ResourceCleanupCoordinator.swift  # System resource management and cleanup coordination
+└── IntegratedCleanupService.swift    # Unified resource cleanup service
 ```
 
 #### Utilities (`Utilities/`)
 ```
 Utilities/
 ├── AppError.swift               # Centralized error handling
-└── UserDefaultsKeys.swift       # Configuration and settings keys
+├── UserDefaultsKeys.swift       # Configuration and settings keys
+├── ResourceCleanupError.swift   # Resource management error definitions
+└── CharacterImageError.swift    # Character image loading error definitions
 ```
 
 #### Core ML Models (`MLModels/`)
@@ -265,6 +290,12 @@ from ultralytics import YOLO
 - **Secure storage** using iOS Keychain when needed
 - **Permission-based access** to camera resources
 - **Data minimization** with no persistent user data collection
+
+### 7. Resource Management and Cleanup
+- **Centralized resource coordination** via ResourceCleanupCoordinator
+- **Integrated cleanup services** for camera sessions and audio resources
+- **Automatic resource lifecycle management** to prevent memory leaks
+- **Error handling** for resource cleanup failures with proper error propagation
 
 ## Development Workflow Patterns
 

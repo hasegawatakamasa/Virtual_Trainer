@@ -105,8 +105,12 @@ import Vision                    // Computer vision framework
 import AVFoundation              // Audio/video capture and processing
 import CoreImage                 // Image processing
 
+// Data Persistence
+import CoreData                  // Object graph and persistence framework
+
 // System Integration
 import MetricKit                 // Performance monitoring
+import Charts                    // Native SwiftUI charts for progress visualization
 ```
 
 ## Audio Feedback System
@@ -129,41 +133,102 @@ import AVFoundation              // AVAudioPlayer and AVAudioSession
 - Exercise zone awareness        // Context-aware audio triggering
 ```
 
-### Audio File Structure
+### Resource File Structure
 ```
-Resources/Audio/
-├── ずんだもん/                    // ずんだもん character audio files
-│   ├── zundamon_form_error.wav           // Form error feedback
-│   ├── zundamon_fast_warning.wav         // Speed warning
-│   ├── zundamon_slow_encouragement.wav   // Speed encouragement
-│   └── zundamon_count_01.wav - 10.wav    // Rep counting (1-10)
-├── 四国めたん/                    // 四国めたん character audio files  
-│   ├── shikoku_form_error.wav            // Form error feedback
-│   ├── shikoku_fast_warning.wav          // Speed warning
-│   ├── shikoku_slow_encouragement.wav    // Speed encouragement
-│   └── shikoku_count_01.wav - 10.wav     // Rep counting (1-10)
-└── README.md                            // Setup instructions
+Resources/
+├── Audio/
+│   ├── ずんだもん/                        // ずんだもん character audio files
+│   │   ├── zundamon_form_error.wav           // Form error feedback
+│   │   ├── zundamon_fast_warning.wav         // Speed warning
+│   │   ├── zundamon_slow_encouragement.wav   // Speed encouragement
+│   │   ├── zundamon_count_01.wav - 10.wav    // Rep counting (1-10)
+│   │   ├── zundamon_100_reps.wav             // 100回達成祝福
+│   │   ├── zundamon_500_reps.wav             // 500回達成祝福
+│   │   ├── zundamon_1000_reps.wav            // 1000回達成祝福
+│   │   ├── zundamon_streak_3days.wav         // 3日連続達成
+│   │   ├── zundamon_streak_7days.wav         // 7日連続達成
+│   │   ├── zundamon_streak_30days.wav        // 30日連続達成
+│   │   ├── zundamon_personal_best.wav        // 自己記録更新
+│   │   ├── zundamon_new_record.wav           // 新記録達成
+│   │   ├── zundamon_level_up.wav             // レベルアップ
+│   │   ├── zundamon_bond_max.wav             // 好感度MAX
+│   │   ├── zundamon_comeback.wav             // カムバック歓迎
+│   │   ├── zundamon_share_prompt.wav         // SNSシェア促進
+│   │   └── zundamon_waiting.wav              // 待機中音声
+│   ├── 四国めたん/                        // 四国めたん character audio files  
+│   │   ├── shikoku_form_error.wav            // Form error feedback
+│   │   ├── shikoku_fast_warning.wav          // Speed warning
+│   │   ├── shikoku_slow_encouragement.wav    // Speed encouragement
+│   │   ├── shikoku_count_01.wav - 10.wav     // Rep counting (1-10)
+│   │   ├── shikoku_100_reps.wav              // 100回達成祝福
+│   │   ├── shikoku_500_reps.wav              // 500回達成祝福
+│   │   ├── shikoku_1000_reps.wav             // 1000回達成祝福
+│   │   ├── shikoku_streak_3days.wav          // 3日連続達成
+│   │   ├── shikoku_streak_7days.wav          // 7日連続達成
+│   │   ├── shikoku_streak_30days.wav         // 30日連続達成
+│   │   ├── shikoku_personal_best.wav         // 自己記録更新
+│   │   ├── shikoku_new_record.wav            // 新記録達成
+│   │   ├── shikoku_level_up.wav              // レベルアップ
+│   │   ├── shikoku_bond_max.wav              // 好感度MAX
+│   │   ├── shikoku_comeback.wav              // カムバック歓迎
+│   │   ├── shikoku_share_prompt.wav          // SNSシェア促進
+│   │   └── shikoku_waiting.wav               // 待機中音声
+│   └── README.md                              // Setup instructions
+└── Image/
+    ├── ずんだもん/                        // ずんだもん character images
+    │   └── zundamon_1.png                    // ずんだもん character portrait
+    └── 四国めたん/                        // 四国めたん character images
+        └── shikoku_metan_1.png               // 四国めたん character portrait (to be added)
 ```
 
 ### Key iOS Components
+
+#### Core Services
 - **MLModelManager**: Core ML モデル管理とオンデバイス推論
 - **CameraManager**: AVFoundation カメラセッション管理
 - **FormAnalyzer**: リアルタイムフォーム分析エンジンと種目別設定対応
 - **RepCounterManager**: 自動回数カウント状態機械
-- **AudioFeedbackService**: マルチキャラクター音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック）
-- **VoiceSettings**: キャラクター選択管理とUserDefaults連携
+- **AudioFeedbackService**: マルチキャラクター音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック・アチーブメント）
 - **SpeedAnalyzer**: 動作速度分析とリアルタイム速度フィードバック
+
+#### Data Persistence Services
+- **CoreDataManager**: Core Data スタック管理と永続化調整
+- **TrainingSessionService**: トレーニングセッション記録と履歴管理
+- **AchievementSystem**: アチーブメント判定と解除ロジック
+- **OshiReactionManager**: 推しキャラクターリアクション管理と好感度システム
+
+#### Resource Management System
+- **ResourceCleanupCoordinator**: システムリソース管理と統合クリーンアップ調整
+- **IntegratedCleanupService**: カメラセッション・音声リソースの統合クリーンアップサービス
+- **ResourceCleanupError**: リソース管理エラーハンドリング専用エラー型
+
+#### UI Components
 - **KeypointOverlayView**: COCO-Pose 17ポイント可視化
 - **ExerciseSelectionView**: 種目選択画面とナビゲーション管理
 - **ExerciseCardView**: 種目表示カードコンポーネント
 - **VoiceCharacterSettingsView**: 音声キャラクター選択とプレビュー画面
+- **SwipableCharacterSelectionView**: スワイプ対応キャラクター選択カルーセル
+- **CharacterImageView**: キャラクター画像表示コンポーネント with async loading
 - **CreditDisplayView**: VOICEVOXクレジット表示
+- **LiveAudioTextView**: リアルタイム音声フィードバックテキスト表示
+- **RecordsTabView**: トレーニング記録閲覧タブビュー
+- **ProgressVisualizationView**: 進捗グラフとチャート表示
+- **WeeklyChartView**: 週間トレーニング量チャート
+
+#### Data Models
+- **VoiceSettings**: キャラクター選択管理とUserDefaults連携
+- **DisplayState**: UI表示状態管理
+- **AudioTextData**: 音声フィードバックテキストデータモデル
+- **TrainingRecord**: Core Data エンティティ for トレーニング記録
+- **VirtualTrainerApp.xcdatamodeld**: Core Data モデル定義
 
 ### Performance Optimization
 - **Neural Engine**: A12 Bionic+ チップの専用AI処理ユニット活用
 - **Frame Rate Control**: 最大15FPS でのリアルタイム処理
 - **Memory Management**: CVPixelBuffer プールによる効率的なメモリ使用
 - **Background Processing**: DispatchQueue による非同期AI推論
+- **Resource Lifecycle Management**: 自動リソースクリーンアップによるメモリリーク防止
+- **Integrated Cleanup System**: カメラセッション終了時の包括的リソース解放
 
 ## Development Environment Requirements
 

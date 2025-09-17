@@ -10,7 +10,8 @@ class FormAnalyzer: ObservableObject {
     @Published var isInExerciseZone: Bool = false
     @Published var lastAnalysisTime: Date = Date()
     @Published var currentExerciseType: ExerciseType = .overheadPress
-    
+    @Published var errorCount: Int = 0
+
     // MARK: - Private Properties
     private let config: RepCounterConfig
     private var exerciseConfig: ExerciseFormConfig

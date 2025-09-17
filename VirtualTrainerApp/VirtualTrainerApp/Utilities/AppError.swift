@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// アプリケーションで発生するエラーの種類
 enum AppError: LocalizedError, Equatable {
@@ -144,11 +146,19 @@ struct ErrorReport: Codable {
         let appVersion: String
         
         static var current: DeviceInfo {
+            #if os(iOS)
             return DeviceInfo(
                 model: UIDevice.current.model,
                 systemVersion: UIDevice.current.systemVersion,
                 appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
             )
+            #else
+            return DeviceInfo(
+                model: "Mac",
+                systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+            )
+            #endif
         }
     }
     

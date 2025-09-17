@@ -42,6 +42,16 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
     var directoryName: String {
         return rawValue
     }
+
+    /// 音声ファイルのフォルダ名（AudioFeedbackServiceで使用）
+    var audioFolderName: String {
+        switch self {
+        case .zundamon:
+            return "ずんだもん"
+        case .shikokuMetan:
+            return "四国めたん"
+        }
+    }
     
     /// VOICEVOX クレジット表記
     var creditText: String {
@@ -50,6 +60,39 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
             return "VOICEVOX:ずんだもん"
         case .shikokuMetan:
             return "VOICEVOX:四国めたん"
+        }
+    }
+    
+    /// キャラクター画像のファイル名
+    var imageName: String {
+        switch self {
+        case .zundamon:
+            return "zundamon_1"
+        case .shikokuMetan:
+            return "shikoku_metan_1"
+        }
+    }
+    
+    /// 画像ファイルのパス
+    var imageFilePath: String? {
+        let subdirectory = "Resources/Image/\(directoryName)"
+        return Bundle.main.path(forResource: imageName, 
+                              ofType: "png", 
+                              inDirectory: subdirectory)
+    }
+    
+    /// 画像の存在確認
+    var hasImage: Bool {
+        return imageFilePath != nil
+    }
+    
+    /// アクセシビリティ用画像説明
+    var accessibilityImageDescription: String {
+        switch self {
+        case .zundamon:
+            return "ずんだもんのキャラクター画像。緑色の髪に白い服を着た可愛らしい東北の妖精"
+        case .shikokuMetan:
+            return "四国めたんのキャラクター画像。オレンジ色の髪の優しい関西弁を話す四国の案内人"
         }
     }
     
@@ -152,6 +195,36 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
         }
         
         print("[VoiceCharacter] Audio file not found: \(fileName) in character: \(displayName)")
+        print("[VoiceCharacter] Searched subdirectories: \(subdirectoryPatterns)")
+        return nil
+    }
+    
+    /// 画像ファイルのURLを取得
+    func imageFileURL() -> URL? {
+        // 複数のサブディレクトリパターンを試す
+        let subdirectoryPatterns = [
+            "Resources/Image/\(directoryName)",
+            "Image/\(directoryName)",
+            directoryName
+        ]
+        
+        let resource = imageName
+        
+        // 各サブディレクトリパターンを試す
+        for subdirectory in subdirectoryPatterns {
+            if let url = Bundle.main.url(forResource: resource, withExtension: "png", subdirectory: subdirectory) {
+                print("[VoiceCharacter] Image file found: \(url.path)")
+                return url
+            }
+        }
+        
+        // メインバンドルからも試す（サブディレクトリなし）
+        if let url = Bundle.main.url(forResource: resource, withExtension: "png") {
+            print("[VoiceCharacter] Image file found in main bundle: \(url.path)")
+            return url
+        }
+        
+        print("[VoiceCharacter] Image file not found: \(imageName).png in character: \(displayName)")
         print("[VoiceCharacter] Searched subdirectories: \(subdirectoryPatterns)")
         return nil
     }

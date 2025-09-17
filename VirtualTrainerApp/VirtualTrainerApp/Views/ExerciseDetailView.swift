@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// 種目詳細画面とトレーニング開始
 struct ExerciseDetailView: View {
@@ -6,6 +9,8 @@ struct ExerciseDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isStartingTraining = false
     @State private var showingTrainingView = false
+    @State private var showingResultView = false
+    @State private var sessionCompletionData: SessionCompletionData?
     
     // 明示的なイニシャライザー
     init(exercise: ExerciseType) {
@@ -32,21 +37,61 @@ struct ExerciseDetailView: View {
             .padding()
         }
         .navigationTitle(exercise.displayName)
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .navigationBarBackButtonHidden(false)
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("閉じる") {
                     dismiss()
                 }
             }
+            #else
+            ToolbarItem(placement: .primaryAction) {
+                Button("閉じる") {
+                    dismiss()
+                }
+            }
+            #endif
         }
         .safeAreaInset(edge: .bottom) {
             startButton
         }
+        #if os(iOS)
         .fullScreenCover(isPresented: $showingTrainingView) {
             print("🎬 FullScreenCover presenting ExerciseTrainingView for \(exercise.displayName)")
-            return ExerciseTrainingView(exerciseType: exercise)
+            return ExerciseTrainingView(
+                exerciseType: exercise,
+                onCompletion: { completionData in
+                    // トレーニング完了時の処理
+                    sessionCompletionData = completionData
+                    showingResultView = true
+                }
+            )
+        }
+        #else
+        .sheet(isPresented: $showingTrainingView) {
+            print("🎬 Sheet presenting ExerciseTrainingView for \(exercise.displayName)")
+            return ExerciseTrainingView(
+                exerciseType: exercise,
+                onCompletion: { completionData in
+                    // トレーニング完了時の処理
+                    sessionCompletionData = completionData
+                    showingResultView = true
+                }
+            )
+        }
+        #endif
+        .sheet(isPresented: $showingResultView) {
+            if let completionData = sessionCompletionData {
+                SessionResultView(completionData: completionData)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ReturnToHome"))) { _ in
+            // ホームに戻る
+            dismiss()
         }
     }
     
@@ -130,7 +175,7 @@ struct ExerciseDetailView: View {
                 }
             }
             .padding(16)
-            .background(Color(.systemGray6))
+            .background(Color.systemGray6)
             .cornerRadius(12)
         }
     }
@@ -164,7 +209,7 @@ struct ExerciseDetailView: View {
             .animation(.easeInOut(duration: 0.1), value: isStartingTraining)
         }
         .padding()
-        .background(Color(.systemBackground).opacity(0.95))
+        .background(Color.systemBackground.opacity(0.95))
     }
     
     // MARK: - ヘルパービュー
@@ -187,7 +232,7 @@ struct ExerciseDetailView: View {
         .padding()
         .frame(height: 80)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6))
+        .background(Color.systemGray6)
         .cornerRadius(12)
     }
     

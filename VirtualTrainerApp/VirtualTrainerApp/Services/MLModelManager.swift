@@ -1,7 +1,9 @@
 import Foundation
 import Vision
-import CoreML
+@preconcurrency import CoreML
+#if canImport(UIKit)
 import UIKit
+#endif
 import Combine
 
 /// AI/MLモデル管理サービス

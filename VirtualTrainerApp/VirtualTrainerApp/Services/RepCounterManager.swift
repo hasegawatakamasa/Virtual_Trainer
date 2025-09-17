@@ -16,6 +16,9 @@ class RepCounterManager: ObservableObject {
     private(set) var speedAnalyzer: SpeedAnalyzer
     private var keypointsCollected: [FilteredKeypoints] = []
     
+    // MARK: - Training Session Integration
+    private let trainingSessionService = TrainingSessionService.shared
+    
     // MARK: - Public Properties
     
     /// 回数カウントイベントのパブリッシャー
@@ -56,6 +59,9 @@ class RepCounterManager: ObservableObject {
         repState.lastAngle = angle
         repState.isInZone = inZone
         repState.lastUpdated = Date()
+        
+        // フォームエラーはレップ完了時のみ記録（フレーム毎ではない）
+        // updateState時の記録は削除
         
         // ゾーンの入退出イベント
         if !previousInZone && inZone {
@@ -137,6 +143,14 @@ class RepCounterManager: ObservableObject {
         // セッションに記録
         currentSession?.addRep(angle: angle, classification: formClassification)
         
+        // TrainingSessionServiceに記録（新機能）
+        let formClassificationEnum = formClassification ?? .normal
+        let keypointConfidence = Double(keypointsCount) / 17.0 // キーポイント信頼度を推定
+        trainingSessionService.recordRep(
+            formQuality: formClassificationEnum,
+            keypointConfidence: keypointConfidence
+        )
+        
         // 統計更新
         AppSettings.shared.totalRepCount += 1
         
@@ -146,7 +160,8 @@ class RepCounterManager: ObservableObject {
         // 速度フィードバック用のイベント送信（必要に応じて）
         if currentSpeed.needsFeedback && speedAnalyzer.shouldPlayFeedback(for: currentSpeed, isExerciseActive: repState.isInZone) {
             eventSubject.send(.speedFeedbackNeeded(speed: currentSpeed))
-            // recordFeedbackPlayedは実際に音声が再生された後に呼ばれるべき
+            // 速度フィードバックをTrainingSessionServiceにも記録
+            trainingSessionService.recordSpeedFeedback()
         }
         
         if config.debugMode {
@@ -178,8 +193,12 @@ class RepCounterManager: ObservableObject {
     }
     
     /// 現在のセッションを終了
+    @MainActor
     func endCurrentSession() {
         currentSession?.end()
+        
+        // TrainingSessionServiceのセッションも終了
+        let sessionSummary = trainingSessionService.endSession()
         
         // 統計更新
         if let session = currentSession {
@@ -187,6 +206,10 @@ class RepCounterManager: ObservableObject {
             if session.formAccuracy > AppSettings.shared.bestAccuracy {
                 AppSettings.shared.bestAccuracy = session.formAccuracy
             }
+        }
+        
+        if config.debugMode, let summary = sessionSummary {
+            print("📊 Session ended - Reps: \(summary.totalReps), Accuracy: \(String(format: "%.1f", summary.formAccuracy * 100))%")
         }
     }
     
@@ -199,6 +222,36 @@ class RepCounterManager: ObservableObject {
     
     private func startNewSession() {
         currentSession = ExerciseSession(exerciseType: exerciseType)
+    }
+    
+    // MARK: - Training Session Integration Methods
+    
+    /// TrainingSessionServiceでセッションを開始
+    func startTrainingSession(with voiceCharacter: VoiceCharacter) {
+        trainingSessionService.startSession(exerciseType: exerciseType, voiceCharacter: voiceCharacter)
+        
+        if config.debugMode {
+            print("🎯 Training session started with \(voiceCharacter.displayName)")
+        }
+    }
+    
+    /// セッションキャンセル時の処理
+    func cancelTrainingSession() {
+        trainingSessionService.cancelSession()
+        
+        if config.debugMode {
+            print("❌ Training session cancelled")
+        }
+    }
+    
+    /// バックグラウンド処理時のセッション状態保存
+    func saveTrainingSessionState() {
+        trainingSessionService.saveCurrentSessionState()
+    }
+    
+    /// バックグラウンドからの復帰時の処理
+    func restoreTrainingSessionFromBackground() {
+        trainingSessionService.restoreSessionFromBackground()
     }
 }
 

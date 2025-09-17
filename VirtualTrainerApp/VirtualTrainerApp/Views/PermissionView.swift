@@ -1,5 +1,8 @@
 import SwiftUI
 import AVFoundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// カメラ権限要求画面
 struct PermissionView: View {
@@ -62,7 +65,7 @@ struct PermissionView: View {
             .padding(.horizontal, 32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(.systemBackground))
+        .background(Color.systemBackground)
         .sheet(isPresented: $showingSettings) {
             SettingsSheetView()
         }
@@ -109,7 +112,7 @@ struct PermissionView: View {
             }
         }
         .padding(20)
-        .background(Color(.secondarySystemBackground))
+        .background(Color.systemGray6)
         .cornerRadius(16)
     }
     
@@ -201,13 +204,17 @@ struct PermissionView: View {
     }
     
     private func openSettings() {
+        #if os(iOS)
         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
             return
         }
-        
+
         if UIApplication.shared.canOpenURL(settingsURL) {
             UIApplication.shared.open(settingsURL)
         }
+        #else
+        print("[PermissionView] Opening settings not available on macOS")
+        #endif
     }
 }
 
@@ -271,9 +278,17 @@ private struct SettingsSheetView: View {
                 .padding(24)
             }
             .navigationTitle("アプリについて")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: {
+                    #if os(iOS)
+                    return .navigationBarTrailing
+                    #else
+                    return .primaryAction
+                    #endif
+                }()) {
                     Button("閉じる") {
                         dismiss()
                     }

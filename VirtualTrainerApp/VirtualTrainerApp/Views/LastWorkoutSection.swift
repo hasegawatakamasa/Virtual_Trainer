@@ -77,7 +77,7 @@ struct LastWorkoutSection: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray6))
+                    .fill(Color.systemGray6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.blue.opacity(0.3), lineWidth: 1)
@@ -116,7 +116,7 @@ struct LastWorkoutSection: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
+                .fill(Color.systemGray6)
         )
         .accessibilityLabel("初回利用のメッセージ")
         .accessibilityHint("下のリストから種目を選択してください")

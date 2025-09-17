@@ -60,7 +60,7 @@ struct StartMessageOverlay: View {
                 showMessage()
             }
         }
-        .onChange(of: isShowing) { newValue in
+        .onChange(of: isShowing) { _, newValue in
             if newValue {
                 showMessage()
             } else {

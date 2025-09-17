@@ -129,13 +129,10 @@ struct FeedbackOverlayView: View {
     
     private var bottomInfoArea: some View {
         HStack {
-            // 回数表示
+            // 回数表示のみ（セッション情報は削除）
             repCountDisplay
-            
+
             Spacer()
-            
-            // セッション情報
-            sessionInfoDisplay
         }
     }
     
@@ -168,27 +165,6 @@ struct FeedbackOverlayView: View {
         .cornerRadius(16)
     }
     
-    private var sessionInfoDisplay: some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            Text("セッション")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
-            
-            Text(sessionDurationText)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-            
-            if repCounter.repState.count > 0 {
-                Text("\(String(format: "%.1f", repCounter.averageRepsPerMinute)) 回/分")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-        }
-        .padding(16)
-        .background(Color.black.opacity(0.6))
-        .cornerRadius(16)
-    }
     
     // MARK: - Debug Overlay
     
@@ -256,12 +232,6 @@ struct FeedbackOverlayView: View {
         return (red: 0.0, green: 0.7, blue: 1.0) // 青（監視中）
     }
     
-    private var sessionDurationText: String {
-        let duration = repCounter.repState.sessionDuration
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
     
     // MARK: - Live Audio Text Display
     
@@ -382,6 +352,8 @@ struct FeedbackOverlayView: View {
             return false // カウント音声は表示しない
         case .speedFeedback, .formError:
             return true // 速度フィードバックとフォームエラーは表示
+        case .timerMilestone, .timerStart:
+            return false // タイマー関連は表示しない
         }
     }
     
@@ -421,6 +393,9 @@ struct FeedbackOverlayView: View {
             
         case .repCount:
             // カウント音声の場合は表示しない
+            return nil
+        case .timerMilestone, .timerStart:
+            // タイマー関連は表示しない
             return nil
         }
     }

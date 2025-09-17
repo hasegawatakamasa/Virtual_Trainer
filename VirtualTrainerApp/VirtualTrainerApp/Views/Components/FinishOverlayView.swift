@@ -72,7 +72,7 @@ struct FinishOverlayView: View {
                 showFinishOverlay()
             }
         }
-        .onChange(of: isShowing) { newValue in
+        .onChange(of: isShowing) { _, newValue in
             if newValue {
                 showFinishOverlay()
             } else {
@@ -202,30 +202,60 @@ struct FinishOverlayView: View {
 
     /// 手動終了ボタン
     private var dismissButton: some View {
-        Button(action: {
-            hideFinishOverlay()
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
+        HStack(spacing: 16) {
+            // リザルトを見るボタン（メイン）
+            Button(action: {
+                hideFinishOverlay()
+                onComplete?()  // リザルト画面への遷移を実行
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.title3)
 
-                Text("閉じる")
-                    .font(.headline)
-                    .fontWeight(.medium)
+                    Text("リザルトを見る")
+                        .font(.headline)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(Color.blue.opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                )
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 25)
-                    .fill(Color.white.opacity(0.2))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 25)
-                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                    )
-            )
+            .buttonStyle(PlainButtonStyle())
+
+            // 閉じるボタン（サブ）
+            Button(action: {
+                hideFinishOverlay()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+
+                    Text("閉じる")
+                        .font(.headline)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(Color.white.opacity(0.2))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 25)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
     }
 
     /// 背景カードスタイル
@@ -235,7 +265,7 @@ struct FinishOverlayView: View {
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color.green.opacity(0.9),
-                        Color.green.darker(by: 0.3)
+                        Color.green.finishOverlayDarker(by: 0.3)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -333,8 +363,8 @@ struct FinishOverlayView: View {
 
 // MARK: - Color Extension
 extension Color {
-    /// より濃い色を生成するヘルパーメソッド
-    func darker(by percentage: Double = 0.2) -> Color {
+    /// より濃い色を生成するヘルパーメソッド（FinishOverlay用）
+    func finishOverlayDarker(by percentage: Double = 0.2) -> Color {
         if #available(iOS 14.0, *) {
             return self.opacity(1.0 - percentage)
         } else {

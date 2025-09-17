@@ -20,6 +20,9 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 - `speed-feedback-enhancement`: オーバーヘッドプレス動作速度に応じたずんだもん音声フィードバック機能（速すぎる警告・応援音声）
 - `voice-character-shikoku-metan-integration`: 四国めたん音声キャラクター追加と設定画面での音声キャラ選択機能（回数カウント、フォームエラー、速度フィードバック対応）
 - `camera-session-bug-fixes`: カメラビューからの退出時にカメラセッション・音声フィードバックが継続する問題とUI改善の修正
+- `training-records-oshi-system`: トレーニング記録機能の追加と推し要素の統合（セッション記録・進捗追跡・オタク文化特化エンゲージメント機能）
+- `character-image-selection-enhancement`: キャラクター選択画面への画像表示機能追加（ずんだもん画像表示による視覚的推しキャラクター選択体験の向上）
+- `60-second-timer-session`: トレーニングセッションの終了方式を手動（バツボタン）から60秒タイマー式に変更し、自動終了・リザルト画面遷移機能を実装
 - Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 

@@ -7,15 +7,19 @@ import AVFoundation
 enum AudioTaskType: Int, CaseIterable {
     case repCount = 1        // 最高優先度：回数カウント
     case formError = 2       // 高優先度：フォームエラー
-    case speedFeedback = 3   // 低優先度：速度フィードバック
-    
+    case speedFeedback = 3   // 中優先度：速度フィードバック
+    case timerMilestone = 4  // 低優先度：タイマーマイルストーン
+    case timerStart = 5      // 低優先度：タイマー開始
+
     var priority: Int { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .repCount: return "Rep Count"
         case .formError: return "Form Error"
         case .speedFeedback: return "Speed Feedback"
+        case .timerMilestone: return "Timer Milestone"
+        case .timerStart: return "Timer Start"
         }
     }
 }
@@ -102,6 +106,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private let repCountCooldownInterval: TimeInterval = 1.0  // 回数カウント音声のクールダウン
     private let voiceSettings = VoiceSettings.shared  // ボイス設定
     private let cleanupCoordinator = ResourceCleanupCoordinator()  // クリーンアップ協調
+    weak var trainingSessionService: TrainingSessionService?  // TrainingSessionServiceへの参照
     
     // 音声キューシステム
     private var audioQueue: [AudioTask] = []
@@ -190,13 +195,18 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     /// 回数カウント音声の再生
     func playRepCountAudio(count: Int) {
         guard isAudioEnabled else { return }
-        
-        // 11以上の場合は10の音声を再生（音声ファイルは1-10のみ）
-        let audioCount = min(count, 10)
-        guard audioCount >= 1 else {
-            print("[AudioFeedbackService] Rep count invalid: \(count)")
+
+        // 音声ファイルは1-40まで対応
+        guard count >= 1 && count <= 40 else {
+            if count > 40 {
+                print("[AudioFeedbackService] Rep count \(count) exceeds available audio (1-40)")
+            } else {
+                print("[AudioFeedbackService] Rep count invalid: \(count)")
+            }
             return
         }
+
+        let audioCount = count
         
         // クールダウンチェック（短めの間隔）
         if let lastTime = lastFeedbackTime {
@@ -224,6 +234,129 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         enqueueAudioTask(task)
     }
     
+    /// タイマーマイルストーン音声の再生
+    func playTimerMilestone(_ milestone: TimerMilestone) {
+        guard isAudioEnabled else { return }
+
+        print("[AudioFeedbackService] Playing timer milestone: \(milestone)")
+
+        // マイルストーンに応じた音声ファイル名を設定
+        let fileName: String
+        switch voiceSettings.selectedCharacter {
+        case .zundamon:
+            switch milestone {
+            case .thirtySeconds:
+                fileName = "zundamon_timer_30_seconds"
+            case .tenSeconds:
+                fileName = "zundamon_timer_10_seconds"
+            case .fiveSeconds:
+                fileName = "zundamon_timer_5_seconds"
+            case .zero:
+                fileName = "zundamon_timer_complete"
+            }
+        case .shikokuMetan:
+            switch milestone {
+            case .thirtySeconds:
+                fileName = "shikoku_timer_30_seconds"
+            case .tenSeconds:
+                fileName = "shikoku_timer_10_seconds"
+            case .fiveSeconds:
+                fileName = "shikoku_timer_5_seconds"
+            case .zero:
+                fileName = "shikoku_timer_complete"
+            }
+        }
+
+        // 複数のサブディレクトリパターンを試す（VoiceCharacterと同じアプローチ）
+        let subdirectoryPatterns = [
+            nil,  // ルートレベル
+            "Audio/\(voiceSettings.selectedCharacter.audioFolderName)"
+        ]
+
+        var audioURL: URL?
+        for subdirectory in subdirectoryPatterns {
+            if let url = Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: subdirectory) {
+                audioURL = url
+                print("[AudioFeedbackService] Timer milestone audio found: \(url.path)")
+                break
+            }
+        }
+
+        guard let audioURL = audioURL else {
+            print("[AudioFeedbackService] Timer milestone audio file not found: \(fileName)")
+            // フォールバック：システムサウンドを使用
+            playSystemSound(for: milestone)
+            return
+        }
+
+        // 音声タスクをキューに追加
+        let task = AudioTask(
+            type: .timerMilestone,
+            audioURL: audioURL,
+            metadata: ["milestone": milestone.rawValue]
+        )
+        enqueueAudioTask(task)
+    }
+
+    /// タイマー開始音声の再生
+    func playTimerStart() {
+        guard isAudioEnabled else { return }
+
+        print("[AudioFeedbackService] Playing timer start sound")
+
+        // 開始音声ファイルのURLを取得
+        let fileName: String
+        switch voiceSettings.selectedCharacter {
+        case .zundamon:
+            fileName = "zundamon_training_start"
+        case .shikokuMetan:
+            fileName = "shikoku_training_start"
+        }
+
+        // 複数のサブディレクトリパターンを試す（VoiceCharacterと同じアプローチ）
+        let subdirectoryPatterns = [
+            nil,  // ルートレベル
+            "Audio/\(voiceSettings.selectedCharacter.audioFolderName)"
+        ]
+
+        var audioURL: URL?
+        for subdirectory in subdirectoryPatterns {
+            if let url = Bundle.main.url(forResource: fileName, withExtension: "wav", subdirectory: subdirectory) {
+                audioURL = url
+                print("[AudioFeedbackService] Training start audio found: \(url.path)")
+                break
+            }
+        }
+
+        guard let audioURL = audioURL else {
+            print("[AudioFeedbackService] Timer start audio file not found: \(fileName)")
+            // フォールバック：システムサウンドを使用
+            playSystemSound(for: .zero)  // 開始音として使用
+            return
+        }
+
+        // 音声タスクをキューに追加（高優先度）
+        let task = AudioTask(
+            type: .timerStart,
+            audioURL: audioURL,
+            metadata: ["event": "timer_start"]
+        )
+        enqueueAudioTask(task)
+    }
+
+    /// システムサウンドの再生（フォールバック用）
+    private func playSystemSound(for milestone: TimerMilestone) {
+        // システムサウンドIDを使用してフィードバック
+        let soundID: SystemSoundID
+        switch milestone {
+        case .thirtySeconds, .tenSeconds, .fiveSeconds:
+            soundID = 1057  // Tick sound
+        case .zero:
+            soundID = 1025  // Complete sound
+        }
+        AudioServicesPlaySystemSound(soundID)
+    }
+
     /// 速度フィードバック音声の再生
     func playSpeedFeedback(_ speed: ExerciseSpeed) {
         guard isAudioEnabled else { return }
@@ -341,16 +474,21 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     /// AVAudioSessionのセットアップ
     private func setupAudioSession() {
+        #if os(iOS)
         do {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try audioSession.setActive(true)
-            
+
             print("[AudioFeedbackService] Audio session setup completed successfully")
         } catch {
             print("[AudioFeedbackService] Failed to setup audio session: \(error)")
             // エラーハンドリング - 音声機能は無効化するが、アプリ全体は継続
         }
+        #else
+        // macOSの場合、AVAudioSessionは不要
+        print("[AudioFeedbackService] Running on macOS - AVAudioSession not needed")
+        #endif
     }
     
     // MARK: - Audio Queue System
@@ -440,7 +578,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     /// クールダウンチェック
     private func shouldSkipDueToCooldown(for taskType: AudioTaskType) -> Bool {
         let now = Date()
-        
+
         switch taskType {
         case .repCount:
             if let lastTime = lastFeedbackTime {
@@ -454,8 +592,11 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             if let lastTime = lastSpeedFeedbackTime {
                 return now.timeIntervalSince(lastTime) < feedbackCooldownInterval
             }
+        case .timerMilestone, .timerStart:
+            // タイマー関連の音声はクールダウンをスキップ（常に再生）
+            return false
         }
-        
+
         return false
     }
     
@@ -468,6 +609,9 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             lastFeedbackTime = now
         case .speedFeedback:
             lastSpeedFeedbackTime = now
+        case .timerMilestone, .timerStart:
+            // タイマー関連は特別な時間更新なし
+            break
         }
     }
     
@@ -478,6 +622,9 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
             print("[AudioFeedbackService] Form error audio file not found for character: \(voiceSettings.selectedCharacter.displayName)")
             return
         }
+        
+        // フォームエラーを記録
+        trainingSessionService?.recordFormError()
         
         // 音声タスクをキューに追加
         let task = AudioTask(type: .formError, audioURL: audioURL, metadata: [:])
@@ -568,6 +715,7 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
     
     /// AVAudioSessionの無効化
     private func deactivateAudioSession() async {
+        #if os(iOS)
         do {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
@@ -575,5 +723,9 @@ class AudioFeedbackService: NSObject, ObservableObject, AVAudioPlayerDelegate {
         } catch {
             print("[AudioFeedbackService] Failed to deactivate audio session: \(error)")
         }
+        #else
+        // macOSの場合、AVAudioSessionは不要
+        print("[AudioFeedbackService] Running on macOS - AVAudioSession not needed")
+        #endif
     }
 }

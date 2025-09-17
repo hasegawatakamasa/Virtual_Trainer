@@ -1,9 +1,13 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// 種目選択画面のメインビュー
 struct ExerciseSelectionView: View {
     @State private var selectedExercise: ExerciseType?
     @State private var showingVoiceSettings = false
+    @State private var showingRecords = false
     @AppStorage("lastSelectedExercise") private var lastSelectedExerciseRaw: String = ExerciseType.overheadPress.rawValue
     
     // 前回選択した種目
@@ -28,12 +32,17 @@ struct ExerciseSelectionView: View {
             .padding(.top)
         }
         .navigationTitle("種目選択")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .sheet(item: $selectedExercise) { exercise in
             ExerciseDetailView(exercise: exercise)
         }
         .sheet(isPresented: $showingVoiceSettings) {
             VoiceCharacterSettingsView()
+        }
+        .sheet(isPresented: $showingRecords) {
+            RecordsTabView()
         }
         .onAppear {
             // 初回起動時の設定
@@ -60,21 +69,34 @@ struct ExerciseSelectionView: View {
                 
                 Spacer()
                 
-                // 音声設定ボタン
-                Button(action: {
-                    showingVoiceSettings = true
-                }) {
-                    Image(systemName: "speaker.wave.2")
-                        .font(.title2)
+                HStack(spacing: 16) {
+                    // トレーニング記録ボタン
+                    Button(action: {
+                        showingRecords = true
+                    }) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.title2)
+                            .foregroundColor(.green)
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel("トレーニング記録")
+                    
+                    // 音声設定ボタン
+                    Button(action: {
+                        showingVoiceSettings = true
+                    }) {
+                        Image(systemName: "speaker.wave.2")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel("音声キャラクター設定")
+                    
+                    // トレーニングアイコン
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 40))
                         .foregroundColor(.blue)
-                        .frame(width: 32, height: 32)
                 }
-                .accessibilityLabel("音声キャラクター設定")
-                
-                // トレーニングアイコン
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: 40))
-                    .foregroundColor(.blue)
             }
         }
         .padding(.horizontal)
@@ -95,7 +117,7 @@ struct ExerciseSelectionView: View {
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color(.systemGray5))
+                    .background(Color.systemGray5)
                     .cornerRadius(8)
             }
             .padding(.horizontal)

@@ -1,19 +1,46 @@
 import SwiftUI
 import AVFoundation
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
+
+/// シートタイプの定義
+enum SheetType: Identifiable {
+    case settings
+    case result
+
+    var id: String {
+        switch self {
+        case .settings: return "settings"
+        case .result: return "result"
+        }
+    }
+}
 
 /// エクササイズトレーニングのメインビュー
 struct ExerciseTrainingView: View {
     let exerciseType: ExerciseType
-    
+    let onCompletion: ((SessionCompletionData) -> Void)?
+
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var formAnalyzer: FormAnalyzer
     @StateObject private var repCounter: RepCounterManager
     @StateObject private var mlModelManager = MLModelManager()
     @StateObject private var audioFeedbackService = AudioFeedbackService()
+    @StateObject private var trainingSessionService = TrainingSessionService.shared
+    @StateObject private var achievementSystem = AchievementSystem.shared
+    @StateObject private var oshiReactionManager = OshiReactionManager.shared
+    @StateObject private var sessionTimer = SessionTimerManager()
+    @StateObject private var completionCoordinator = SessionCompletionCoordinator()
+    @StateObject private var interruptionHandler = InterruptionHandler.shared
     @State private var isProcessing = false
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showingSettings = false
+    @State private var showStartMessage = false
+    @State private var showFinishMessage = false
+    @State private var showingResultView = false
+    @State private var sessionCompletionData: SessionCompletionData?
     @State private var cameraOutputHandler = CameraOutputHandler()
     @State private var lastProcessingTime = Date()
     @Environment(\.dismiss) private var dismiss
@@ -24,8 +51,9 @@ struct ExerciseTrainingView: View {
     }
     
     // デフォルトイニシャライザー（既存コードとの互換性）
-    init(exerciseType: ExerciseType = .overheadPress) {
+    init(exerciseType: ExerciseType = .overheadPress, onCompletion: ((SessionCompletionData) -> Void)? = nil) {
         self.exerciseType = exerciseType
+        self.onCompletion = onCompletion
         self._formAnalyzer = StateObject(wrappedValue: FormAnalyzer(exerciseType: exerciseType))
         self._repCounter = StateObject(wrappedValue: RepCounterManager(exerciseType: exerciseType))
     }
@@ -45,8 +73,8 @@ struct ExerciseTrainingView: View {
                 mlModelManager: mlModelManager,
                 audioFeedbackService: audioFeedbackService
             )
-            
-            // 種目名表示（中央配置）
+
+            // 種目名表示とタイマー表示
             VStack {
                 Text(exerciseType.displayName)
                     .font(.title2)
@@ -57,12 +85,57 @@ struct ExerciseTrainingView: View {
                     .background(Color.black.opacity(0.6))
                     .cornerRadius(20)
                     .padding(.top, 80)
-                
+
+                // タイマー表示（waitingForRep状態以降で表示）
+                if sessionTimer.timerState == .waitingForRep ||
+                   sessionTimer.timerState == .showingStart ||
+                   sessionTimer.timerState == .running ||
+                   sessionTimer.timerState == .paused ||
+                   sessionTimer.timerState == .completed {
+                    TimerDisplayView(
+                        remainingTime: sessionTimer.remainingTime,
+                        isLastTenSeconds: sessionTimer.isLastTenSeconds,
+                        timerState: sessionTimer.timerState,
+                        canStartManually: sessionTimer.canStartManually,
+                        onManualStart: {
+                            sessionTimer.manualStart()
+                        }
+                    )
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                }
+
                 Spacer()
             }
-            
+
             // コントロールUI
             controlOverlay
+
+            // 開始メッセージオーバーレイ
+            if showStartMessage || sessionTimer.showStartMessage {
+                StartMessageOverlay(
+                    isShowing: .constant(true),
+                    message: "トレーニング開始！",
+                    displayDuration: 2.0,
+                    onComplete: nil
+                )
+            }
+
+            // 終了メッセージオーバーレイ
+            if showFinishMessage || completionCoordinator.showFinishMessage {
+                FinishOverlayView(
+                    isShowing: .constant(true),
+                    completedReps: repCounter.repState.count,
+                    trainingTime: TimeInterval(60 - sessionTimer.remainingTime),
+                    customMessage: nil,
+                    autoDismissDelay: nil,  // 自動非表示を無効化（手動で閉じる必要）
+                    onComplete: {
+                        // リザルトボタンが押された時の処理
+                        // 完了コーディネーターのリザルト画面遷移メソッドを呼び出す
+                        completionCoordinator.navigateToResultScreen()
+                    }
+                )
+            }
         }
         .onAppear {
             print("🎥 ExerciseTrainingView appeared for exercise: \(exerciseType.displayName)")
@@ -71,8 +144,19 @@ struct ExerciseTrainingView: View {
         .onDisappear {
             cleanup()
         }
-        .sheet(isPresented: $showingSettings) {
-            ExerciseSettingsView()
+        .sheet(item: .constant(showingSettings ? SheetType.settings : showingResultView ? SheetType.result : nil)) { sheetType in
+            switch sheetType {
+            case .settings:
+                ExerciseSettingsView()
+            case .result:
+                if let completionData = sessionCompletionData {
+                    SessionResultView(completionData: completionData)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ReturnToHome"))) { _ in
+            // ホームに戻る - ExerciseTrainingViewを閉じる
+            dismiss()
         }
     }
     
@@ -153,11 +237,31 @@ struct ExerciseTrainingView: View {
     // MARK: - Setup and Cleanup
     
     private func setupServices() {
+        // AudioFeedbackServiceとTrainingSessionServiceを接続
+        audioFeedbackService.trainingSessionService = trainingSessionService
+
+        // タイマーと完了コーディネーターの設定
+        completionCoordinator.configure(
+            cleanupService: integratedCleanupService,
+            sessionService: trainingSessionService
+        )
+
+        // InterruptionHandlerの設定
+        interruptionHandler.configureWithTimerManager(sessionTimer)
+        // SessionServiceの設定は自動的にsharedインスタンスを使用
+
         // カメラマネージャーのデリゲート設定
         cameraOutputHandler.processFrameCallback = { pixelBuffer in
             await self.processFrame(pixelBuffer: pixelBuffer)
         }
         cameraManager.delegate = cameraOutputHandler
+
+        // トレーニングセッション開始
+        let currentCharacter = VoiceCharacter(rawValue: UserDefaults.standard.string(forKey: "selectedCharacter") ?? "ずんだもん") ?? .zundamon
+        repCounter.startTrainingSession(with: currentCharacter)
+
+        // タイマーを待機状態にする
+        sessionTimer.startWaitingForRep()
         
         // カメラ権限を要求してセッション開始（少し遅延を入れてUI初期化完了を待つ）
         Task {
@@ -184,7 +288,47 @@ struct ExerciseTrainingView: View {
         repCounter.eventPublisher
             .receive(on: DispatchQueue.main)
             .sink { event in
+                print("📌 RepCounter event received: \(event)")
+
+                // 最初のレップでタイマーを開始（待機状態の場合のみ）
+                if case .repCompleted(let count) = event {
+                    print("📌 Rep completed: \(count), Timer state: \(sessionTimer.timerState.displayName)")
+                    if sessionTimer.timerState == .waitingForRep {
+                        print("🎯 Starting timer on first rep!")
+                        sessionTimer.handleFirstRep()
+                        // トレーニング開始音声を再生（1回目のカウントより優先）
+                        audioFeedbackService.playTimerStart()
+                        // 1回目のカウント音声は再生しないため、振動フィードバックのみ
+                        #if os(iOS)
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                        impactFeedback.impactOccurred()
+                        #endif
+                        return  // 1回目はhandleRepCountEventを呼ばない
+                    }
+                }
+
+                // その他のイベントまたは2回目以降のレップカウント
                 handleRepCountEvent(event)
+            }
+            .store(in: &cancellables)
+
+        // タイマー完了の監視
+        sessionTimer.$timerState
+            .receive(on: DispatchQueue.main)
+            .sink { state in
+                if state == .completed {
+                    handleTimerCompletion()
+                }
+            }
+            .store(in: &cancellables)
+
+        // タイマーマイルストーンの監視
+        sessionTimer.$remainingTime
+            .receive(on: DispatchQueue.main)
+            .sink { [weak audioFeedbackService] time in
+                if let milestone = TimerMilestone.milestoneForRemainingTime(TimeInterval(time)) {
+                    audioFeedbackService?.playTimerMilestone(milestone)
+                }
             }
             .store(in: &cancellables)
             
@@ -200,9 +344,60 @@ struct ExerciseTrainingView: View {
             .store(in: &cancellables)
             
         // アプリライフサイクルの監視
+        #if os(iOS)
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
             .sink { _ in
                 cameraManager.handleAppDidEnterBackground()
+            }
+            .store(in: &cancellables)
+
+        // セッション再開の監視（メモリ警告などで新しいセッションが開始された場合）
+        NotificationCenter.default.publisher(for: Notification.Name("SessionRestarted"))
+            .sink { _ in
+                print("📱 Session restarted notification received")
+
+                // RepCounterをリセットして新しいセッションを開始
+                repCounter.reset()
+                let currentCharacter = VoiceCharacter(rawValue: UserDefaults.standard.string(forKey: "selectedCharacter") ?? "ずんだもん") ?? .zundamon
+                repCounter.startTrainingSession(with: currentCharacter)
+
+                // タイマーをリセットして待機状態に
+                sessionTimer.reset()
+                sessionTimer.startWaitingForRep()
+
+                print("⏰ Timer reset complete - state: \(sessionTimer.timerState.displayName)")
+                print("⏰ Timer is now in waitingForRep: \(sessionTimer.timerState == .waitingForRep)")
+                print("⏰ Remaining time: \(sessionTimer.remainingTime) seconds")
+
+                // RepCounterのイベント購読を再設定（重要！）
+                repCounter.eventPublisher
+                    .receive(on: DispatchQueue.main)
+                    .sink { event in
+                        print("📌 [Resubscribed] RepCounter event: \(event)")
+
+                        // 最初のレップでタイマーを開始
+                        if case .repCompleted(let count) = event {
+                            print("📌 [Resubscribed] Rep completed: \(count), Timer state: \(sessionTimer.timerState.displayName)")
+                            if sessionTimer.timerState == .waitingForRep {
+                                print("🎯 [Resubscribed] Starting timer on first rep!")
+                                sessionTimer.handleFirstRep()
+                                // トレーニング開始音声を再生（1回目のカウントより優先）
+                                audioFeedbackService.playTimerStart()
+                                // 1回目のカウント音声は再生しないため、振動フィードバックのみ
+                                #if os(iOS)
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                impactFeedback.impactOccurred()
+                                #endif
+                                return  // 1回目はhandleRepCountEventを呼ばない
+                            }
+                        }
+
+                        // その他のイベントまたは2回目以降のレップカウント
+                        handleRepCountEvent(event)
+                    }
+                    .store(in: &cancellables)
+
+                print("✅ RepCounter event subscription re-established")
             }
             .store(in: &cancellables)
         
@@ -211,9 +406,25 @@ struct ExerciseTrainingView: View {
                 cameraManager.handleAppWillEnterForeground()
             }
             .store(in: &cancellables)
+        #else
+        print("[ExerciseTrainingView] Background/Foreground notifications not configured for macOS")
+        #endif
     }
     
     private func cleanup() {
+        // タイマーを停止
+        sessionTimer.stopTimer()
+
+        // トレーニングセッション終了とアチーブメント評価
+        if let sessionSummary = trainingSessionService.getSessionSummary() {
+            achievementSystem.evaluateAchievements(for: sessionSummary)
+            oshiReactionManager.checkNewRecord(session: sessionSummary)
+            oshiReactionManager.checkMilestone(session: sessionSummary)
+        }
+
+        // 通常のセッション終了処理
+        repCounter.endCurrentSession()
+
         Task {
             let cleanupSuccess = await integratedCleanupService.performIntegratedCleanup()
             if !cleanupSuccess {
@@ -222,6 +433,44 @@ struct ExerciseTrainingView: View {
             }
         }
         cancellables.removeAll()
+    }
+
+    private func handleTimerCompletion() {
+        print("[ExerciseTrainingView] Timer completed, initiating completion sequence")
+
+        // 注: タイマー終了音声は、SessionTimerManagerの残り時間監視で
+        // 自動的に再生されるため、ここでは再生しない
+
+        // 完了データを作成
+        let completionData = SessionCompletionData(
+            startTime: Date().addingTimeInterval(-60),  // 60秒前
+            endTime: Date(),
+            configuredDuration: 60,
+            actualDuration: 60,
+            completedReps: repCounter.repState.count,
+            completionReason: .timerCompleted,
+            formErrorCount: formAnalyzer.errorCount,
+            speedWarningCount: trainingSessionService.sessionStats.speedWarnings,
+            averageRepsPerMinute: Double(repCounter.repState.count),
+            maxConsecutiveCorrectReps: repCounter.repState.count,  // TODO: 正確な連続カウントを追跡
+            voiceCharacter: UserDefaults.standard.string(forKey: "selectedCharacter") ?? "ずんだもん",
+            exerciseType: exerciseType.displayName
+        )
+
+        // 完了処理を開始
+        completionCoordinator.initiateCompletion(with: completionData)
+
+        // ナビゲーション監視
+        completionCoordinator.$shouldNavigateToResult
+            .filter { $0 }
+            .sink { _ in
+                // リザルト画面への遷移（ExerciseTrainingView内で表示）
+                if let completionData = completionCoordinator.completionData {
+                    sessionCompletionData = completionData
+                    showingResultView = true
+                }
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Actions
@@ -241,8 +490,10 @@ struct ExerciseTrainingView: View {
         switch event {
         case .repCompleted(let count):
             // 回数完了時の振動フィードバック
+            #if os(iOS)
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
+            #endif
             
             // 回数カウント音声の再生
             audioFeedbackService.playRepCountAudio(count: count)
@@ -256,16 +507,20 @@ struct ExerciseTrainingView: View {
             
         case .zoneEntered:
             // ゾーン入場時の軽い振動
+            #if os(iOS)
             let selectionFeedback = UISelectionFeedbackGenerator()
             selectionFeedback.selectionChanged()
+            #endif
             
         case .zoneExited:
             break // 特別な処理なし
             
         case .sessionReset:
             // リセット時の通知フィードバック
+            #if os(iOS)
             let notificationFeedback = UINotificationFeedbackGenerator()
             notificationFeedback.notificationOccurred(.success)
+            #endif
             
         case .speedFeedbackNeeded(let speed):
             // 速度フィードバック音声の再生
@@ -355,7 +610,20 @@ extension ExerciseTrainingView {
                 // 実際のAI結果を使用
                 let analysisResult = self.formAnalyzer.analyzeForm(keypoints: filteredKeypoints)
                 // FormClassification.ResultからFormClassificationを取り出す
-                let formClassification = formClassificationResult?.classification
+                var formClassification = formClassificationResult?.classification ?? .normal
+                
+                // フォーム分析結果からエラー検出を強化
+                if formClassification == .normal {
+                    // 角度に基づく簡易的なフォームエラー検出
+                    let elbowAngle = analysisResult.elbowAngle
+                    
+                    // オーバーヘッドプレスの適正角度範囲を超えているかチェック
+                    if elbowAngle < 45 || elbowAngle > 180 {
+                        formClassification = .elbowError
+                        print("🔍 Detected elbow error: angle = \(String(format: "%.1f", elbowAngle))°")
+                    }
+                }
+                
                 self.repCounter.updateState(analysisResult: analysisResult, formClassification: formClassification)
             }
         }
@@ -407,7 +675,9 @@ struct ExerciseSettingsView: View {
                             .tag(character)
                         }
                     }
+                    #if os(iOS)
                     .pickerStyle(.navigationLink)
+                    #endif
                     
                     Button("キャラクター音声テスト") {
                         testCharacterVoice()
@@ -450,9 +720,17 @@ struct ExerciseSettingsView: View {
                 }
             }
             .navigationTitle("設定")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: {
+                    #if os(iOS)
+                    return .navigationBarTrailing
+                    #else
+                    return .primaryAction
+                    #endif
+                }()) {
                     Button("完了") {
                         dismiss()
                     }

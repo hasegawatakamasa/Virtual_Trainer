@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// VOICEVOX クレジット表示ビュー
 struct CreditDisplayView: View {
@@ -62,13 +65,23 @@ struct LicenseDetailView: View {
                 .padding()
             }
             .navigationTitle("ライセンス情報")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("閉じる") {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    Button("閉じる") {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
@@ -117,7 +130,7 @@ struct LicenseDetailView: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color.systemGray6)
         .cornerRadius(12)
     }
     
@@ -131,7 +144,11 @@ struct LicenseDetailView: View {
             
             Button(action: {
                 if let url = URL(string: "https://zunko.jp/con_ongen_kiyaku.html") {
+                    #if os(iOS)
                     UIApplication.shared.open(url)
+                    #elseif os(macOS)
+                    NSWorkspace.shared.open(url)
+                    #endif
                 }
             }) {
                 HStack {
@@ -161,10 +178,10 @@ struct LicenseDetailView: View {
                 .foregroundColor(.secondary)
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Color.systemBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.systemGray4), lineWidth: 1)
+                .stroke(Color.systemGray4, lineWidth: 1)
         )
         .cornerRadius(12)
     }
@@ -177,7 +194,11 @@ struct LicenseDetailView: View {
             .padding()
         Spacer()
     }
-    .background(Color(.systemGroupedBackground))
+    #if os(iOS)
+    .background(Color.systemGroupedBackground)
+    #else
+    .background(Color(NSColor.windowBackgroundColor))
+    #endif
 }
 
 #Preview("License Detail") {

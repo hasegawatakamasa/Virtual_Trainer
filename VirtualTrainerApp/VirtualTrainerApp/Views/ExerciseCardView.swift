@@ -98,7 +98,7 @@ struct ExerciseCardView: View {
         if isHighlighted && exercise.isAvailable {
             return Color.blue.opacity(0.1)
         } else {
-            return Color(.systemBackground)
+            return Color.systemBackground
         }
     }
     
@@ -106,9 +106,9 @@ struct ExerciseCardView: View {
         if isHighlighted && exercise.isAvailable {
             return .blue
         } else if exercise.isAvailable {
-            return Color(.systemGray4)
+            return Color.systemGray4
         } else {
-            return Color(.systemGray5)
+            return Color.systemGray5
         }
     }
     
