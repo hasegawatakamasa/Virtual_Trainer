@@ -205,3 +205,66 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+project.xcworkspace/
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcarchive
+.build/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# Playground support
+timeline.xctimeline
+playground.xcworkspace
+
+# Code Injection
+iOSInjectionProject/
+
+# Claude Code
+.claude/
+
+# Kiro Specs - Allow steering files but ignore other development files
+.kiro/specs/
+
+# AI Models (大きなファイル)
+*.pth
+*.pt
+*.onnx
+
+# Temporary files
+*.tmp
+*.temp
+
+# Audio files (VOICEVOX generated content)
+# これらの音声ファイルは手動でプロジェクトに追加する必要があります
+VirtualTrainerApp/Resources/Audio/*.wav
+AI_Model/sounds/*.wav

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23507" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="Achievement" representedClassName="Achievement" syncable="YES" codeGenerationType="class">
+        <attribute name="bondPointsAwarded" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="characterName" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="type" attributeType="String"/>
+        <attribute name="unlockedAt" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="SessionRep" representedClassName="SessionRep" syncable="YES" codeGenerationType="class">
+        <attribute name="formQuality" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="keypointConfidence" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="timestamp" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="TrainingSession" inverseName="reps" inverseEntity="TrainingSession"/>
+    </entity>
+    <entity name="TrainingSession" representedClassName="TrainingSession" syncable="YES" codeGenerationType="class">
+        <attribute name="characterName" attributeType="String"/>
+        <attribute name="endTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="exerciseType" attributeType="String"/>
+        <attribute name="formErrors" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="sessionDuration" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="speedWarnings" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="startTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="totalReps" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="reps" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SessionRep" inverseName="session" inverseEntity="SessionRep"/>
+    </entity>
+</model>
