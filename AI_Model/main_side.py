@@ -64,8 +64,7 @@ if __name__ == '__main__':
 
     rep_counter, state = 0, 'start'
     rep_keypoints_sequence = []
-    last_verdict, verdict_color = "Ready", (255, 255, 255)
-    feedback_message = ""
+    last_verdict, verdict_color = "Let's Start", (255, 255, 255)
 
     print("リアルタイム判定を開始します... 'q'キーで終了します。")
 
@@ -84,8 +83,6 @@ if __name__ == '__main__':
                 body_is_visible = True
         
         if body_is_visible:
-            feedback_message = ""
-            
             nose = keypoints_xy[0]
             l_sh = keypoints_xy[5]; r_sh = keypoints_xy[6]
             l_el = keypoints_xy[7]; r_el = keypoints_xy[8]
@@ -98,7 +95,6 @@ if __name__ == '__main__':
             nose_y = nose[1]
             shoulder_width = abs(l_sh[0] - r_sh[0])
 
-            # --- ★★★ 新しい回数カウントロジック ★★★ ---
             is_up = wrist_y < shoulder_y
             is_out = abs(l_wr[0] - l_sh[0]) > shoulder_width * 0.7 and \
                      abs(r_wr[0] - r_sh[0]) > shoulder_width * 0.7
@@ -106,11 +102,8 @@ if __name__ == '__main__':
             is_in = abs(l_wr[0] - l_hip[0]) < shoulder_width * 0.5 and \
                     abs(r_wr[0] - r_hip[0]) < shoulder_width * 0.5
             is_too_high = wrist_y < nose_y
-            
-            # ★★★ 新しい条件: 肘が十分に上がっているか ★★★
-            elbow_is_up = elbow_y < (shoulder_y + shoulder_width * 0.1) # 肘が肩より少し下まで許容
+            elbow_is_up = elbow_y < (shoulder_y + shoulder_width * 0.1)
 
-            # 状態遷移
             if state == 'start' and is_up and is_out and elbow_is_up:
                 state = 'lifted'
                 rep_keypoints_sequence.clear()
@@ -138,16 +131,12 @@ if __name__ == '__main__':
             elif state == 'lifted' and is_too_high:
                 state = 'over'
                 rep_keypoints_sequence.clear()
-                feedback_message = "Don't raise too high!"
-                last_verdict = "Invalid"
-                verdict_color = (0, 0, 255)
+                # last_verdictは変更しない
 
             elif state == 'over' and is_down and is_in:
                 state = 'start'
-                last_verdict = "Ready"
-                verdict_color = (255, 255, 255)
+                # last_verdictは変更しない
 
-            # 状態が'lifted'の間だけキーポイントを記録
             if state == 'lifted':
                 features = process_keypoints_for_inference(keypoints_xy)
                 if features is not None:
@@ -155,12 +144,14 @@ if __name__ == '__main__':
         else:
             state = 'start'
             rep_keypoints_sequence.clear()
-            feedback_message = "Please fit your upper body in the frame"
+            if rep_counter == 0:
+                last_verdict, verdict_color = "Let's Start", (255, 255, 255)
 
         cv2.putText(annotated_frame, f"Form: {last_verdict}", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, 2, verdict_color, 4)
         cv2.putText(annotated_frame, f"Reps: {rep_counter}", (50, 180), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 100, 0), 4)
-        if feedback_message:
-            cv2.putText(annotated_frame, feedback_message, (50, annotated_frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+        
+        # ★★★ 修正点: 画面下部のフィードバック描画機能を削除 ★★★
+        # if feedback_message: ... のブロックを完全に削除
 
         cv2.imshow('Real-time Side Raise Coach', annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
