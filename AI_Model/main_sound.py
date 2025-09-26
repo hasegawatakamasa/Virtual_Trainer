@@ -22,15 +22,19 @@ CLASS_NAMES = ['Normal', 'Elbow Error']
 
 YOLO_MODEL_PATH = "yolo11n-pose.pt"
 
-# ★★★ 音声ファイルのマッピング ★★★
+# ★★★ 修正点: 'Too Slow' を追加 ★★★
 AUDIO_FILE_MAP = {
     'Elbow Error': "audio/elbow_open.wav",
     'Too Fast': "audio/too_fast.wav",
+    'Too Slow': "audio/too_slow.wav" 
 }
 
 # --- 回数カウント用の設定 ---
 TOP_THRESHOLD = 130.0
 BOTTOM_THRESHOLD = 100.0
+# ★★★ 速度判定のフレーム数を定義 ★★★
+MIN_FRAMES_PER_REP = 10
+MAX_FRAMES_PER_REP = 60 # 例として60フレーム(約2秒)に設定
 
 # --- --- --- GRUモデルの定義 (量子化モデルの読み込みに必要) --- --- ---
 class GRUModel(nn.Module):
@@ -97,7 +101,6 @@ if __name__ == '__main__':
     gru_model.eval()
     print("モデルの読み込み完了。")
 
-    # --- 音声再生キューとワーカースレッドを開始 ---
     audio_queue = queue.Queue()
     audio_thread = threading.Thread(target=audio_worker, args=(audio_queue,))
     audio_thread.daemon = True
@@ -130,10 +133,8 @@ if __name__ == '__main__':
             l_sh_xy, r_sh_xy = keypoints_xy[5], keypoints_xy[6]
             l_el_xy, r_el_xy = keypoints_xy[7], keypoints_xy[8]
             l_wr_xy, r_wr_xy = keypoints_xy[9], keypoints_xy[10]
-
             shoulder_y = (l_sh_xy[1] + r_sh_xy[1]) / 2.0
             wrist_y = (l_wr_xy[1] + r_wr_xy[1]) / 2.0
-            
             exercise_active = wrist_y < shoulder_y
             
             if exercise_active:
@@ -145,7 +146,13 @@ if __name__ == '__main__':
                 elif state == 'bottom' and current_elbow_angle > TOP_THRESHOLD:
                     state = 'top'; rep_counter += 1
                     
-                    if len(rep_keypoints_sequence) > 10:
+                    # ★★★ 修正点: 速度判定ロジックを修正 ★★★
+                    num_frames = len(rep_keypoints_sequence)
+                    if num_frames < MIN_FRAMES_PER_REP:
+                        last_verdict = "Too Fast"; verdict_color = (0, 255, 255)
+                    elif num_frames > MAX_FRAMES_PER_REP:
+                        last_verdict = "Too Slow"; verdict_color = (0, 165, 255)
+                    else:
                         sequence_np = np.array(rep_keypoints_sequence, dtype=np.float32)
                         input_tensor = torch.from_numpy(sequence_np).unsqueeze(0)
                         with torch.no_grad():
@@ -154,11 +161,9 @@ if __name__ == '__main__':
                             prediction = 1 if prob > 0.5 else 0
                             last_verdict = CLASS_NAMES[prediction]
                             verdict_color = (0, 0, 255) if prediction == 1 else (0, 255, 0)
-                    else:
-                        last_verdict = "Too Fast"; verdict_color = (0, 255, 255)
 
                     # --- 連続音声再生ロジック ---
-                    count_to_play = min(rep_counter, 20) # 10回以上は10を再生
+                    count_to_play = min(rep_counter, 20)
                     count_audio_file = f"audio/{count_to_play}.wav"
                     audio_queue.put(count_audio_file)
 
@@ -182,7 +187,6 @@ if __name__ == '__main__':
         cv2.imshow('Real-time Form Coach', annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
 
-    # --- 終了処理 ---
     audio_queue.put(None)
     audio_thread.join()
     cap.release()
