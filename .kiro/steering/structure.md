@@ -127,7 +127,15 @@ Models/
 ├── VoiceCharacter.swift    # Multi-character voice system with image support (ずんだもん・四国めたん)
 ├── DisplayState.swift      # UI display state management
 ├── AudioTextData.swift     # Audio feedback text data models
-└── TrainingRecord.swift    # Core Data entity for training records
+├── TrainingRecord.swift    # Core Data entity for training records
+├── TimerState.swift        # Timer state management
+├── TimerStartTrigger.swift # Timer start trigger definitions
+├── TimerMilestone.swift    # Timer milestone events (30s, 45s, 60s)
+├── TimedSessionConfiguration.swift # Timer session settings
+├── SessionInterruption.swift # Session interruption types
+├── InterruptedSessionData.swift # Interrupted session data storage
+├── SessionCompletionData.swift # Session completion data model
+└── TimerError.swift        # Timer-related error definitions
 ```
 
 #### Views (`Views/`)
@@ -147,10 +155,14 @@ Views/
 ├── RecordsTabView.swift              # Training records and history display
 ├── ProgressVisualizationView.swift   # Progress charts and statistics
 ├── WeeklyChartView.swift             # Weekly training activity chart
+├── SessionResultView.swift           # Session completion result display
 └── Components/
     ├── LiveAudioTextView.swift       # Live audio feedback text display component
     ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel
-    └── CharacterImageView.swift      # Character image loading and display
+    ├── CharacterImageView.swift      # Character image loading and display
+    ├── TimerDisplayView.swift        # 60-second timer countdown display
+    ├── StartMessageOverlay.swift     # Session start countdown overlay
+    └── FinishOverlayView.swift       # Session finish animation overlay
 ```
 
 #### Services (`Services/`)
@@ -166,6 +178,9 @@ Services/
 ├── TrainingSessionService.swift      # Training session recording and history
 ├── AchievementSystem.swift           # Achievement detection and unlocking logic
 ├── OshiReactionManager.swift         # Oshi character reactions and affinity system
+├── SessionTimerManager.swift         # 60-second timer session management
+├── InterruptionHandler.swift         # Session interruption handling and recovery
+├── SessionCompletionCoordinator.swift # Session completion flow coordination
 ├── ResourceCleanupCoordinator.swift  # System resource management and cleanup coordination
 └── IntegratedCleanupService.swift    # Unified resource cleanup service
 ```
@@ -176,7 +191,8 @@ Utilities/
 ├── AppError.swift               # Centralized error handling
 ├── UserDefaultsKeys.swift       # Configuration and settings keys
 ├── ResourceCleanupError.swift   # Resource management error definitions
-└── CharacterImageError.swift    # Character image loading error definitions
+├── CharacterImageError.swift    # Character image loading error definitions
+└── ColorExtensions.swift        # UI color theme extensions and utilities
 ```
 
 #### Core ML Models (`MLModels/`)

@@ -70,6 +70,11 @@ pip install -r AI_Model/requirements.txt
 # Model Conversion
 python AI_Model/convert_models.py       # Unified model conversion script
 
+# Testing Scripts (for model validation)
+python AI_Model/test_overheadpress.py   # Test overhead press form detection
+python AI_Model/test_squat.py           # Test squat form detection
+python AI_Model/test_sideraise.py       # Test side raise form detection
+
 # Application Launch (Exercise-Specific)
 python AI_Model/main_overheadpress.py   # オーバーヘッドプレス
 python AI_Model/main_squat.py           # スクワット
