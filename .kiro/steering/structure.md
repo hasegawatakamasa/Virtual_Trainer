@@ -10,12 +10,6 @@ Virtual_Trainer/
 ├── docs/                       # Project documentation
 ├── .kiro/                      # Kiro spec-driven development files
 ├── .claude/                    # Claude Code configuration
-├── convert_models.py           # Primary model conversion script
-├── convert_models_system.py    # System-wide model conversion with error handling
-├── convert_models_onnx.py      # PyTorch to ONNX format conversion
-├── convert_yolo_only.py        # YOLO-specific conversion
-├── onnx_to_coreml.py          # ONNX to Core ML conversion
-├── create_fresh_gru.py        # GRU model creation utilities
 ├── README.md                  # Main project documentation
 ├── CLAUDE.md                  # Claude Code project instructions
 └── README_IMPLEMENTATION.md   # Detailed implementation guide
@@ -25,8 +19,12 @@ Virtual_Trainer/
 
 ```
 AI_Model/
-├── main.py                           # Core Python application entry point
-├── main_sound.py                     # Sound-enhanced version with VOICEVOX audio
+├── main_overheadpress.py             # オーバーヘッドプレス専用エントリーポイント
+├── main_squat.py                     # スクワット専用エントリーポイント
+├── main_sideraises.py                # サイドレイズ専用エントリーポイント
+├── main_pushup.py                    # 腕立て伏せ専用エントリーポイント
+├── main_side.py                      # サイドレイズ検証用エントリーポイント
+├── convert_models.py                 # 統合モデル変換ユーティリティ（YOLO・GRU対応）
 ├── requirements.txt                  # Python dependencies
 ├── best_gru_model_v7_quantized.pth  # Trained GRU model for form classification
 ├── yolo11n-pose.pt                  # YOLO11 pose estimation model
@@ -37,36 +35,27 @@ AI_Model/
 ```
 
 ### Key Python Files
-- **main.py**: Desktop application with real-time pose detection and form analysis
-- **main_sound.py**: Enhanced version with VOICEVOX audio feedback capabilities
+- **main_overheadpress.py**: オーバーヘッドプレス専用実装（音声フィードバック付き）
+- **main_squat.py**: スクワット専用実装（音声フィードバック付き）
+- **main_sideraises.py**: サイドレイズ専用実装（音声フィードバック付き）
+- **main_pushup.py**: 腕立て伏せ専用実装（音声フィードバック付き）
+- **main_side.py**: サイドレイズ検証用実装
+- **convert_models.py**: 統合モデル変換ユーティリティ（YOLO・GRU両モデル対応）
 - **sounds/**: VOICEVOX-generated audio files (ずんだもん voice) for error feedback and rep counting
 - **requirements.txt**: Dependencies including torch, ultralytics, opencv-python
 
-## Model Conversion Utilities (Root Directory)
+## Model Conversion Utilities (AI_Model Directory)
 
-```
-Model Conversion Scripts/
-├── convert_models.py           # Primary model conversion script
-├── convert_models_system.py    # System-wide conversion with error handling
-├── convert_models_onnx.py      # PyTorch → ONNX format conversion
-├── convert_yolo_only.py        # YOLO model-specific conversion
-├── onnx_to_coreml.py          # ONNX → Core ML conversion pipeline
-└── create_fresh_gru.py        # Fresh GRU model creation and initialization
-```
+**Note**: Model conversion scripts have been consolidated into `AI_Model/convert_models.py` for simplified workflow. 以前の複数スクリプト（convert_models_onnx.py, convert_models_system.py, convert_yolo_only.py等）は統合されました。
 
 ### Conversion Workflow
 1. **Model Training**: Train PyTorch models in Python environment
-2. **Format Conversion**: Use conversion scripts to create ONNX intermediates
+2. **Format Conversion**: Use convert_models.py to create ONNX intermediates
 3. **iOS Optimization**: Convert ONNX to Core ML format for iOS deployment
 4. **Integration**: Import Core ML models into Xcode project
 
 ### Script Responsibilities
-- **convert_models.py**: Primary model conversion script for streamlined workflow
-- **convert_models_system.py**: Comprehensive conversion with error handling and logging
-- **convert_models_onnx.py**: Optimized ONNX export with compatibility checks
-- **onnx_to_coreml.py**: Core ML conversion with iOS-specific optimizations
-- **convert_yolo_only.py**: Specialized YOLO pose model conversion
-- **create_fresh_gru.py**: GRU model initialization and architecture setup
+- **convert_models.py**: 統合モデル変換スクリプト - YOLOとGRU両モデルに対応（位置: AI_Model/）
 
 ## VirtualTrainerApp Directory (iOS Implementation)
 

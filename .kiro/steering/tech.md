@@ -15,13 +15,10 @@
 - **Core ML**: iOS向けオンデバイス推論エンジン
 
 ### Model Conversion Pipeline
-- **Primary Conversion**: `convert_models.py` - メイン変換スクリプト
-- **System-wide Conversion**: `convert_models_system.py` - 包括的変換パイプラインとエラーハンドリング
-- **PyTorch → ONNX**: `convert_models_onnx.py` - ONNX中間フォーマット変換
-- **ONNX → Core ML**: `onnx_to_coreml.py` - iOS向け最適化とCore ML変換
-- **YOLO専用**: `convert_yolo_only.py` - YOLO11nポーズ専用変換
-- **GRU初期化**: `create_fresh_gru.py` - 新規GRUモデル作成とアーキテクチャ設定
+- **統合変換スクリプト**: `AI_Model/convert_models.py` - YOLOとGRU両モデル対応の統合変換スクリプト
 - **量子化対応**: `best_gru_model_v7_quantized.pth` - 軽量化済みGRUモデル
+
+**Note**: 以前は複数の変換スクリプト（convert_models_onnx.py、convert_models_system.py等）が存在しましたが、現在は`AI_Model/convert_models.py`に統合されています。
 
 ## Python Implementation
 
@@ -70,16 +67,14 @@ venv\Scripts\activate     # Windows
 # Dependencies Installation
 pip install -r AI_Model/requirements.txt
 
-# Model Conversion (Multiple Options)
-python convert_models.py                # Primary model conversion script
-python convert_models_system.py         # Comprehensive conversion pipeline
-python convert_models_onnx.py           # PyTorch to ONNX conversion
-python onnx_to_coreml.py                # ONNX to Core ML conversion
-python convert_yolo_only.py             # YOLO model-only conversion
-python create_fresh_gru.py              # Create new GRU model
+# Model Conversion
+python AI_Model/convert_models.py       # Unified model conversion script
 
-# Application Launch
-python AI_Model/main.py
+# Application Launch (Exercise-Specific)
+python AI_Model/main_overheadpress.py   # オーバーヘッドプレス
+python AI_Model/main_squat.py           # スクワット
+python AI_Model/main_sideraises.py      # サイドレイズ
+python AI_Model/main_pushup.py          # 腕立て伏せ
 ```
 
 ## iOS Implementation
@@ -280,19 +275,15 @@ export GRU_MODEL_PATH="./AI_Model/best_gru_model_v7_quantized.pth"
 
 ### Python Distribution
 ```bash
-# Development Build
-python AI_Model/main.py
+# Model Conversion
+python AI_Model/convert_models.py       # Unified model conversion script
 
-# Model Conversion Options
-python convert_models.py                # Primary conversion script
-python convert_models_system.py         # Complete pipeline with error handling
-python convert_models_onnx.py           # PyTorch to ONNX only
-python onnx_to_coreml.py                # ONNX to Core ML only
-python convert_yolo_only.py             # YOLO conversion only
-python create_fresh_gru.py              # New GRU model setup
-
-# Sound-Enhanced Version
-python AI_Model/main_sound.py
+# Exercise-Specific Applications (全て音声フィードバック付き)
+python AI_Model/main_overheadpress.py   # オーバーヘッドプレス
+python AI_Model/main_squat.py           # スクワット
+python AI_Model/main_sideraises.py      # サイドレイズ
+python AI_Model/main_pushup.py          # 腕立て伏せ
+python AI_Model/main_side.py            # サイドレイズ検証用
 ```
 
 ### iOS Build Process
