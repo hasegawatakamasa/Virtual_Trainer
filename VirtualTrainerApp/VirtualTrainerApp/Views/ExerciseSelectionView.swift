@@ -39,7 +39,7 @@ struct ExerciseSelectionView: View {
             ExerciseDetailView(exercise: exercise)
         }
         .sheet(isPresented: $showingVoiceSettings) {
-            VoiceCharacterSettingsView()
+            OshiTrainerSettingsView()
         }
         .sheet(isPresented: $showingRecords) {
             RecordsTabView()
@@ -81,16 +81,16 @@ struct ExerciseSelectionView: View {
                     }
                     .accessibilityLabel("トレーニング記録")
                     
-                    // 音声設定ボタン
+                    // 推しトレーナー設定ボタン
                     Button(action: {
                         showingVoiceSettings = true
                     }) {
-                        Image(systemName: "speaker.wave.2")
+                        Image(systemName: "figure.stand")
                             .font(.title2)
                             .foregroundColor(.blue)
                             .frame(width: 32, height: 32)
                     }
-                    .accessibilityLabel("音声キャラクター設定")
+                    .accessibilityLabel("推しトレーナー設定")
                     
                     // トレーニングアイコン
                     Image(systemName: "figure.strengthtraining.traditional")
