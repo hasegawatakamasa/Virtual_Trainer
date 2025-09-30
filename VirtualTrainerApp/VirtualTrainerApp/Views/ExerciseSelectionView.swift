@@ -86,7 +86,7 @@ struct ExerciseSelectionView: View {
                             .frame(width: 32, height: 32)
                     }
                     .accessibilityLabel("トレーニング記録")
-                    
+
                     // 推しトレーナー設定ボタン
                     Button(action: {
                         showingVoiceSettings = true
@@ -97,11 +97,6 @@ struct ExerciseSelectionView: View {
                             .frame(width: 32, height: 32)
                     }
                     .accessibilityLabel("推しトレーナー設定")
-                    
-                    // トレーニングアイコン
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 40))
-                        .foregroundColor(.blue)
                 }
             }
         }
