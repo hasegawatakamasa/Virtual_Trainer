@@ -83,7 +83,7 @@ enum VoiceCharacter: String, CaseIterable, Identifiable, Codable {
     
     /// 画像の存在確認
     var hasImage: Bool {
-        return imageFilePath != nil
+        return imageFileURL() != nil
     }
     
     /// アクセシビリティ用画像説明

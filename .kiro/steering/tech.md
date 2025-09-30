@@ -175,9 +175,11 @@ Resources/
 │   │   └── shikoku_waiting.wav               // 待機中音声
 │   └── README.md                              // Setup instructions
 └── Image/
+    ├── OshinoAi/                          // 推乃 藍（デフォルトトレーナー）character images
+    │   └── normal.png                         // 推乃 藍 character portrait
     ├── ずんだもん/                        // ずんだもん character images
     │   └── zundamon_1.png                    // ずんだもん character portrait
-    └── 四国めたん/                        // 四国めたん character images
+    └── 四国めたん/                        // 四国めたん character images (planned)
         └── shikoku_metan_1.png               // 四国めたん character portrait (to be added)
 ```
 
@@ -190,6 +192,7 @@ Resources/
 - **RepCounterManager**: 自動回数カウント状態機械
 - **AudioFeedbackService**: マルチキャラクター音声フィードバック管理（フォームエラー・回数カウント・速度フィードバック・アチーブメント）
 - **SpeedAnalyzer**: 動作速度分析とリアルタイム速度フィードバック
+- **VoicePreviewService**: ランダム音声プレビュー再生（回数カウント・フォームエラー・速度フィードバック等からランダム選択）とサンプル管理
 
 #### Data Persistence Services
 - **CoreDataManager**: Core Data スタック管理と永続化調整
@@ -206,9 +209,17 @@ Resources/
 - **KeypointOverlayView**: COCO-Pose 17ポイント可視化
 - **ExerciseSelectionView**: 種目選択画面とナビゲーション管理
 - **ExerciseCardView**: 種目表示カードコンポーネント
-- **VoiceCharacterSettingsView**: 音声キャラクター選択とプレビュー画面
-- **SwipableCharacterSelectionView**: スワイプ対応キャラクター選択カルーセル
-- **CharacterImageView**: キャラクター画像表示コンポーネント with async loading
+- **FutureExpansionBanner**: 将来拡張予定種目バナーコンポーネント（近日公開メッセージ表示）
+- **QuickPreviewOverlay**: 近日公開種目のクイックプレビューオーバーレイ（詳細情報・カロリー・難易度表示）
+- **OshiTrainerSettingsView**: 推しトレーナー選択とプレビュー画面
+- **VoiceCharacterSettingsView**: 音声キャラクター選択とプレビュー画面（レガシー）
+- **SwipableTrainerSelectionView**: スワイプ対応トレーナー選択カルーセル
+- **SwipableCharacterSelectionView**: スワイプ対応キャラクター選択カルーセル（レガシー）
+- **TrainerImageView**: トレーナー画像表示コンポーネント with async loading
+- **CharacterImageView**: キャラクター画像表示コンポーネント with async loading（レガシー）
+- **VoicePreviewButton**: 音声プレビュー再生ボタンコンポーネント
+- **TrainerSelectionSuccessMessage**: トレーナー選択成功メッセージ表示
+- **HintView**: ヒント・ガイダンス表示コンポーネント
 - **CreditDisplayView**: VOICEVOXクレジット表示
 - **LiveAudioTextView**: リアルタイム音声フィードバックテキスト表示
 - **RecordsTabView**: トレーニング記録閲覧タブビュー
@@ -216,7 +227,12 @@ Resources/
 - **WeeklyChartView**: 週間トレーニング量チャート
 
 #### Data Models
-- **VoiceSettings**: キャラクター選択管理とUserDefaults連携
+- **OshiTrainer**: 推しトレーナーデータモデル（性格・口調・音声・画像）
+- **OshiTrainerSettings**: トレーナー選択管理とUserDefaults連携
+- **ExerciseType+TargetInfo**: ExerciseTypeの目標情報拡張（duration, reps, type, displayText, guidanceText）
+- **ImageLoadResult**: 画像ロード結果状態管理（success/fallback）
+- **VoiceCharacter**: 音声キャラクター定義（ずんだもん・四国めたん）
+- **VoiceSettings**: キャラクター選択管理とUserDefaults連携（レガシー）
 - **DisplayState**: UI表示状態管理
 - **AudioTextData**: 音声フィードバックテキストデータモデル
 - **TrainingRecord**: Core Data エンティティ for トレーニング記録

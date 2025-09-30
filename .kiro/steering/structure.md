@@ -107,6 +107,14 @@ Resources/Audio/
     ├── shikoku_fast_warning.wav          # Speed warning
     ├── shikoku_slow_encouragement.wav    # Speed encouragement
     └── shikoku_count_01.wav - 10.wav     # Rep counting (1-10)
+
+Resources/Image/
+├── OshinoAi/                     # 推乃 藍（デフォルトトレーナー）character images
+│   └── normal.png                        # 推乃 藍 character portrait
+├── ずんだもん/                    # ずんだもん character images
+│   └── zundamon_1.png                    # ずんだもん character portrait
+└── 四国めたん/                    # 四国めたん character images (planned)
+    └── shikoku_metan_1.png               # 四国めたん character portrait (to be added)
 ```
 
 **Note**: Audio files (*.wav) are currently populated in the development environment. For new setups, developers can copy files from `AI_Model/sounds/` or generate new ones using VOICEVOX following instructions in `Resources/Audio/README.md`.
@@ -123,11 +131,15 @@ Models/
 ├── RepState.swift          # Rep counting state management
 ├── ExerciseSession.swift   # Workout session data model
 ├── ExerciseType.swift      # Exercise type definitions and metadata
+├── ExerciseType+TargetInfo.swift # ExerciseType extension for structured target information
 ├── SpeedFeedback.swift     # Speed analysis and feedback state models
+├── OshiTrainer.swift       # Oshi trainer character model (personality, voice, image)
+├── OshiTrainerSettings.swift # Oshi trainer selection and UserDefaults integration
 ├── VoiceCharacter.swift    # Multi-character voice system with image support (ずんだもん・四国めたん)
 ├── DisplayState.swift      # UI display state management
 ├── AudioTextData.swift     # Audio feedback text data models
 ├── TrainingRecord.swift    # Core Data entity for training records
+├── ImageLoadResult.swift   # Image loading result state (success/fallback)
 ├── TimerState.swift        # Timer state management
 ├── TimerStartTrigger.swift # Timer start trigger definitions
 ├── TimerMilestone.swift    # Timer milestone events (30s, 45s, 60s)
@@ -149,7 +161,8 @@ Views/
 ├── CameraPreviewView.swift           # Camera feed display
 ├── KeypointOverlayView.swift         # Pose skeleton visualization
 ├── FeedbackOverlayView.swift         # Real-time feedback UI
-├── VoiceCharacterSettingsView.swift  # Voice character selection and preview screen
+├── OshiTrainerSettingsView.swift     # Oshi trainer selection and preview screen
+├── VoiceCharacterSettingsView.swift  # Voice character selection and preview screen (legacy)
 ├── CreditDisplayView.swift           # VOICEVOX license and credit display
 ├── PermissionView.swift              # Camera permission requests
 ├── RecordsTabView.swift              # Training records and history display
@@ -158,8 +171,15 @@ Views/
 ├── SessionResultView.swift           # Session completion result display
 └── Components/
     ├── LiveAudioTextView.swift       # Live audio feedback text display component
-    ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel
-    ├── CharacterImageView.swift      # Character image loading and display
+    ├── SwipableTrainerSelectionView.swift # Swipable trainer selection carousel
+    ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel (legacy)
+    ├── TrainerImageView.swift        # Trainer image loading and display
+    ├── CharacterImageView.swift      # Character image loading and display (legacy)
+    ├── VoicePreviewButton.swift      # Voice preview playback button
+    ├── TrainerSelectionSuccessMessage.swift # Trainer selection success message
+    ├── HintView.swift                # Hint and guidance display component
+    ├── FutureExpansionBanner.swift   # Future exercise expansion banner component
+    ├── QuickPreviewOverlay.swift     # Coming-soon exercise preview overlay
     ├── TimerDisplayView.swift        # 60-second timer countdown display
     ├── StartMessageOverlay.swift     # Session start countdown overlay
     └── FinishOverlayView.swift       # Session finish animation overlay
@@ -174,6 +194,7 @@ Services/
 ├── RepCounterManager.swift           # Automatic rep counting logic
 ├── SpeedAnalyzer.swift               # Movement speed analysis and feedback control
 ├── AudioFeedbackService.swift        # VOICEVOX audio feedback (form, rep counting, speed feedback, achievements)
+├── VoicePreviewService.swift         # Random voice preview playback with haptic feedback and AVAudioPlayerDelegate
 ├── CoreDataManager.swift             # Core Data stack management and persistence
 ├── TrainingSessionService.swift      # Training session recording and history
 ├── AchievementSystem.swift           # Achievement detection and unlocking logic
@@ -191,6 +212,7 @@ Utilities/
 ├── AppError.swift               # Centralized error handling
 ├── UserDefaultsKeys.swift       # Configuration and settings keys
 ├── ResourceCleanupError.swift   # Resource management error definitions
+├── OshiTrainerError.swift       # Oshi trainer system error definitions (trainerNotFound, imageLoadFailed, etc.)
 ├── CharacterImageError.swift    # Character image loading error definitions
 └── ColorExtensions.swift        # UI color theme extensions and utilities
 ```

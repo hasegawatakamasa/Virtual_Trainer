@@ -272,35 +272,15 @@ struct ExerciseFormConfig {
                 primaryMuscleGroups: ["胸筋", "上腕三頭筋", "体幹"],
                 formCheckpoints: ["体を一直線に保つ", "胸が床に近づく", "手は肩幅より少し広め"]
             )
-        case .plank:
+        case .sideRaise:
             return ExerciseFormConfig(
-                exerciseType: .plank,
-                excellentAngleRange: 170...180,
-                goodAngleRange: 160...180,
-                fairAngleRange: 150...180,
-                exerciseZoneMargin: 10.0,
-                primaryMuscleGroups: ["腹筋", "背筋", "体幹"],
-                formCheckpoints: ["頭から足まで一直線", "お尻を上げすぎない", "肘は肩の真下"]
-            )
-        case .lunge:
-            return ExerciseFormConfig(
-                exerciseType: .lunge,
+                exerciseType: .sideRaise,
                 excellentAngleRange: 85...95,
                 goodAngleRange: 75...105,
                 fairAngleRange: 65...115,
-                exerciseZoneMargin: 25.0,
-                primaryMuscleGroups: ["大腿四頭筋", "臀筋", "バランス感覚"],
-                formCheckpoints: ["前膝が90度", "前膝がつま先より前に出ない", "体幹を安定"]
-            )
-        case .burpee:
-            return ExerciseFormConfig(
-                exerciseType: .burpee,
-                excellentAngleRange: 70...110,
-                goodAngleRange: 60...120,
-                fairAngleRange: 50...130,
-                exerciseZoneMargin: 35.0,
-                primaryMuscleGroups: ["全身", "有酸素", "筋力"],
-                formCheckpoints: ["各動作を丁寧に", "着地時膝を曲げる", "無理せず自分のペース"]
+                exerciseZoneMargin: 20.0,
+                primaryMuscleGroups: ["三角筋（側部）", "僧帽筋", "上腕"],
+                formCheckpoints: ["肘を軽く曲げる", "肩の高さまで上げる", "ゆっくりと制御して下ろす"]
             )
         }
     }

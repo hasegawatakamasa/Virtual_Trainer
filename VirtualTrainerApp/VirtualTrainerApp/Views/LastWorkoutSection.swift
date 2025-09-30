@@ -161,14 +161,14 @@ extension LastWorkoutSection {
 
 #Preview("異なる種目") {
     VStack(spacing: 20) {
-        LastWorkoutSection(lastExercise: .squat) { exercise in
+        LastWorkoutSection(lastExercise: .overheadPress) { exercise in
             print("Selected: \(exercise.displayName)")
         }
-        
-        LastWorkoutSection(lastExercise: .burpee) { exercise in
+
+        LastWorkoutSection(lastExercise: .sideRaise) { exercise in
             print("Selected: \(exercise.displayName)")
         }
-        
+
         Spacer()
     }
     .padding()

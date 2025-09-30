@@ -28,6 +28,12 @@ struct ExerciseSelectionView: View {
                 
                 // 種目選択セクション
                 exerciseSelectionSection
+
+                // 将来拡張予定バナー
+                if !ExerciseType.comingSoonExercises.isEmpty {
+                    FutureExpansionBanner(comingSoonCount: ExerciseType.comingSoonExercises.count)
+                        .padding(.horizontal)
+                }
             }
             .padding(.top)
         }
@@ -142,25 +148,27 @@ struct ExerciseSelectionView: View {
                 .onTapGesture {
                     handleExerciseSelection(exercise)
                 }
-                .disabled(!exercise.isAvailable)
             }
         }
         .padding(.horizontal)
     }
     
     // MARK: - アクション
-    
+
     private func handleExerciseSelection(_ exercise: ExerciseType) {
         guard exercise.isAvailable else {
-            // 利用不可能な種目の場合は何もしない
-            // 将来的にはアラートを表示可能
+            // 利用不可能な種目の場合はハプティックフィードバック
+            #if canImport(UIKit)
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.warning)
+            #endif
             return
         }
-        
+
         // 最後に選択した種目を保存
         lastSelectedExerciseRaw = exercise.rawValue
         AppSettings.shared.lastSelectedExercise = exercise
-        
+
         // シートを表示
         selectedExercise = exercise
     }

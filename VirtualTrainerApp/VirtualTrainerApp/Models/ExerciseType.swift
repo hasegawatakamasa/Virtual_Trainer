@@ -3,11 +3,9 @@ import Foundation
 /// エクササイズの種目を表す列挙型
 enum ExerciseType: String, CaseIterable, Codable, Identifiable {
     case overheadPress = "overhead_press"
+    case sideRaise = "side_raise"
     case squat = "squat"
-    case plank = "plank"
     case pushUp = "push_up"
-    case lunge = "lunge"
-    case burpee = "burpee"
     
     /// Identifiable準拠のためのID
     var id: String { rawValue }
@@ -17,16 +15,12 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return "オーバーヘッドプレス"
+        case .sideRaise:
+            return "サイドレイズ"
         case .squat:
             return "スクワット"
-        case .plank:
-            return "プランク"
         case .pushUp:
             return "腕立て伏せ"
-        case .lunge:
-            return "ランジ"
-        case .burpee:
-            return "バーピー"
         }
     }
     
@@ -35,16 +29,12 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return "肩と腕を鍛える基本的なウェイトトレーニング"
+        case .sideRaise:
+            return "肩の側面を集中的に鍛えるトレーニング"
         case .squat:
             return "下半身全体を鍛える王道トレーニング"
-        case .plank:
-            return "体幹を鍛える静的トレーニング"
         case .pushUp:
             return "胸と腕を鍛える自重トレーニング"
-        case .lunge:
-            return "下半身とバランス感覚を鍛える"
-        case .burpee:
-            return "全身を使った高強度トレーニング"
         }
     }
     
@@ -53,16 +43,12 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return 2
+        case .sideRaise:
+            return 2
         case .squat:
             return 2
-        case .plank:
-            return 1
         case .pushUp:
             return 2
-        case .lunge:
-            return 3
-        case .burpee:
-            return 5
         }
     }
     
@@ -71,16 +57,12 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return 60
+        case .sideRaise:
+            return 50
         case .squat:
             return 80
-        case .plank:
-            return 30
         case .pushUp:
             return 70
-        case .lunge:
-            return 75
-        case .burpee:
-            return 120
         }
     }
     
@@ -89,7 +71,7 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return true
-        default:
+        case .sideRaise, .squat, .pushUp:
             return false // 将来実装予定
         }
     }
@@ -99,16 +81,12 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .overheadPress:
             return "figure.strengthtraining.traditional"
+        case .sideRaise:
+            return "figure.arms.open"
         case .squat:
             return "figure.strengthtraining.functional"
-        case .plank:
-            return "figure.core.training"
         case .pushUp:
-            return "figure.arms.open"
-        case .lunge:
             return "figure.walk"
-        case .burpee:
-            return "figure.jumprope"
         }
     }
     
@@ -121,6 +99,61 @@ enum ExerciseType: String, CaseIterable, Codable, Identifiable {
     var difficultyStars: String {
         return String(repeating: "★", count: difficulty) + String(repeating: "☆", count: 5 - difficulty)
     }
+
+    // MARK: - 目標情報プロパティ
+
+    /// 目標時間（秒単位）- 1分 = 60秒
+    var targetDuration: Int {
+        return 60  // 全種目1分推奨
+    }
+
+    /// 目標回数（オプショナル）- 回数ベースの種目のみ
+    var targetReps: Int? {
+        switch self {
+        case .overheadPress:
+            return 10
+        case .sideRaise:
+            return 15
+        case .squat:
+            return 15
+        case .pushUp:
+            return 12
+        }
+    }
+
+    /// 実践的なガイダンステキスト
+    var guidanceText: String {
+        switch self {
+        case .overheadPress:
+            return "1分間で10回を目標に、フォームを意識して丁寧に行いましょう"
+        case .sideRaise:
+            return "1分間で15回を目標に、肘を軽く曲げて肩の高さまで上げます"
+        case .squat:
+            return "1分間で15回を目標に、膝がつま先より前に出ないように注意"
+        case .pushUp:
+            return "1分間で12回を目標に、肘を90度まで曲げてください"
+        }
+    }
+
+    /// 目標タイプ（時間ベース or 回数ベース）
+    var targetType: TargetType {
+        targetReps == nil ? .duration : .reps
+    }
+
+    /// 目標表示用テキスト（カード表示用）
+    var targetDisplayText: String {
+        if let reps = targetReps {
+            return "目標: \(reps)回 / 1分"
+        } else {
+            return "目標: 1分キープ"
+        }
+    }
+}
+
+/// 目標タイプ列挙型
+enum TargetType {
+    case duration  // 時間ベース
+    case reps      // 回数ベース
 }
 
 // MARK: - 便利なメソッド

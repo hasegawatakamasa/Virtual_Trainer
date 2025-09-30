@@ -24,6 +24,7 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 - `character-image-selection-enhancement`: キャラクター選択画面への画像表示機能追加（ずんだもん画像表示による視覚的推しキャラクター選択体験の向上）
 - `60-second-timer-session`: トレーニングセッションの終了方式を手動（バツボタン）から60秒タイマー式に変更し、自動終了・リザルト画面遷移機能を実装
 - `oshi-trainer-selection-system`: 音声キャラクター画面を推しトレーナー選択画面に変更し、デフォルトトレーナー「推乃 藍」の実装と四国めたんボイス選択機能の追加
+- `exercise-selection-ui-improvement`: エクササイズ選択画面のUI改善（種目追加・説明・ユーザビリティ向上）
 - Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 

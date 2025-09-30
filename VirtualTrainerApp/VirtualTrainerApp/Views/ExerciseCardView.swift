@@ -23,6 +23,9 @@ struct ExerciseCardView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(exercise.isAvailable ? .primary : .secondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .minimumScaleFactor(0.9)
             }
             
             // 説明文
@@ -31,37 +34,10 @@ struct ExerciseCardView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
-            
-            // メタデータ（難易度、カロリー）
-            HStack(spacing: 16) {
-                VStack(spacing: 4) {
-                    HStack(spacing: 2) {
-                        ForEach(0..<5) { index in
-                            Image(systemName: index < exercise.difficulty ? "star.fill" : "star")
-                                .font(.caption2)
-                                .foregroundColor(index < exercise.difficulty ? .orange : .gray.opacity(0.3))
-                        }
-                    }
-                    
-                    Text("難易度")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                    .frame(height: 20)
-                
-                VStack(spacing: 4) {
-                    Text("\(exercise.estimatedCalories)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                    
-                    Text("kcal/10分")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
+
+            // 目標情報セクション
+            targetInfoSection
+
             // 「近日公開」ラベル
             if let comingSoonLabel = exercise.comingSoonLabel {
                 Text(comingSoonLabel)
@@ -76,7 +52,7 @@ struct ExerciseCardView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .frame(height: 200)
+        .frame(minHeight: 200, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(cardBackgroundColor)
@@ -92,8 +68,27 @@ struct ExerciseCardView: View {
         .accessibilityAddTraits(exercise.isAvailable ? [.isButton] : [])
     }
     
+    // MARK: - Subviews
+
+    private var targetInfoSection: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "target")
+                .font(.caption)
+                .foregroundColor(.blue)
+
+            Text(exercise.targetDisplayText)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.systemGray6)
+        .cornerRadius(12)
+    }
+
     // MARK: - Computed Properties
-    
+
     private var cardBackgroundColor: Color {
         if isHighlighted && exercise.isAvailable {
             return Color.blue.opacity(0.1)
@@ -115,17 +110,16 @@ struct ExerciseCardView: View {
     private var accessibilityLabel: String {
         var label = exercise.displayName
         label += ", \(exercise.description)"
-        label += ", 難易度\(exercise.difficulty)段階"
-        label += ", \(exercise.estimatedCalories)カロリー消費"
-        
+        label += ", \(exercise.targetDisplayText)"
+
         if !exercise.isAvailable {
             label += ", 近日公開予定"
         }
-        
+
         if isHighlighted {
             label += ", 前回選択した種目"
         }
-        
+
         return label
     }
     
@@ -152,7 +146,7 @@ struct ExerciseCardView: View {
 #Preview("利用不可能な種目") {
     VStack(spacing: 20) {
         ExerciseCardView(exercise: .squat)
-        ExerciseCardView(exercise: .burpee)
+        ExerciseCardView(exercise: .sideRaise)
     }
     .padding()
     .preferredColorScheme(.dark)

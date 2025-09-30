@@ -117,39 +117,57 @@ struct ExerciseDetailView: View {
             Text("基本情報")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                infoCard(
-                    icon: "star.fill",
-                    title: "難易度",
-                    value: exercise.difficultyStars,
-                    color: .orange
+
+            VStack(alignment: .leading, spacing: 12) {
+                infoRow(
+                    icon: "target",
+                    title: "目標",
+                    value: exercise.targetDisplayText,
+                    color: .blue
                 )
-                
-                infoCard(
-                    icon: "flame.fill",
-                    title: "カロリー消費",
-                    value: "\(exercise.estimatedCalories) kcal/10分",
-                    color: .red
+
+                infoRow(
+                    icon: "lightbulb.fill",
+                    title: "ガイダンス",
+                    value: exercise.guidanceText,
+                    color: .orange
                 )
             }
         }
     }
+
+    private func infoRow(icon: String, title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text(value)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding()
+        .background(Color.systemGray6)
+        .cornerRadius(12)
+    }
     
     private var detailInfoSection: some View {
         VStack(spacing: 16) {
-            Text("トレーニング詳細")
+            Text("トレーニング効果")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
-            VStack(spacing: 12) {
-                detailRow(icon: "target", title: "主な効果", description: exerciseEffects)
-                detailRow(icon: "timer", title: "推奨時間", description: "10-15分")
-                detailRow(icon: "repeat", title: "推奨回数", description: exerciseReps)
-            }
+
+            detailRow(icon: "figure.strengthtraining.traditional", title: "主な効果", description: exerciseEffects)
         }
     }
     
@@ -213,29 +231,7 @@ struct ExerciseDetailView: View {
     }
     
     // MARK: - ヘルパービュー
-    
-    private func infoCard(icon: String, title: String, value: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .frame(height: 80)
-        .frame(maxWidth: .infinity)
-        .background(Color.systemGray6)
-        .cornerRadius(12)
-    }
-    
+
     private func detailRow(icon: String, title: String, description: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -295,33 +291,12 @@ struct ExerciseDetailView: View {
         switch exercise {
         case .overheadPress:
             return "肩（三角筋）、上腕（上腕三頭筋）、体幹"
+        case .sideRaise:
+            return "肩（三角筋側部）、僧帽筋、上腕"
         case .squat:
             return "大腿四頭筋、ハムストリング、臀筋、体幹"
-        case .plank:
-            return "腹筋、背筋、肩、全身の体幹"
         case .pushUp:
             return "胸筋、上腕三頭筋、肩、体幹"
-        case .lunge:
-            return "大腿四頭筋、臀筋、ハムストリング、バランス感覚"
-        case .burpee:
-            return "全身（有酸素運動 + 筋力トレーニング）"
-        }
-    }
-    
-    private var exerciseReps: String {
-        switch exercise {
-        case .overheadPress:
-            return "8-12回 × 3セット"
-        case .squat:
-            return "12-15回 × 3セット"
-        case .plank:
-            return "30-60秒 × 3セット"
-        case .pushUp:
-            return "8-12回 × 3セット"
-        case .lunge:
-            return "各脚 8-10回 × 3セット"
-        case .burpee:
-            return "5-10回 × 3セット"
         }
     }
     
@@ -334,6 +309,13 @@ struct ExerciseDetailView: View {
                 "重量は適切に調整し、正しいフォームを優先",
                 "肩甲骨を下げて安定させる"
             ]
+        case .sideRaise:
+            return [
+                "肘を軽く曲げて固定する",
+                "肩の高さまで上げる（それ以上は上げない）",
+                "ゆっくりと制御して下ろす",
+                "体の反動を使わない"
+            ]
         case .squat:
             return [
                 "膝がつま先より前に出ないよう注意",
@@ -341,33 +323,12 @@ struct ExerciseDetailView: View {
                 "太ももが床と平行になるまで下げる",
                 "かかとに体重をかける"
             ]
-        case .plank:
-            return [
-                "頭から足まで一直線を保つ",
-                "お尻を上げすぎたり下げすぎたりしない",
-                "呼吸を止めずに続ける",
-                "肘は肩の真下に置く"
-            ]
         case .pushUp:
             return [
                 "体を一直線に保つ",
                 "胸がしっかりと床に近づくまで下げる",
                 "手は肩幅より少し広めに",
                 "腰を落とさない"
-            ]
-        case .lunge:
-            return [
-                "前膝が90度になるまで下げる",
-                "前膝がつま先より前に出ないよう注意",
-                "体幹を安定させる",
-                "バランスを保ちながらゆっくりと"
-            ]
-        case .burpee:
-            return [
-                "各動作を丁寧に行う",
-                "着地時は膝を軽く曲げる",
-                "無理せず自分のペースで",
-                "水分補給を忘れずに"
             ]
         }
     }
@@ -389,9 +350,9 @@ struct ExerciseDetailView: View {
     .preferredColorScheme(.dark)
 }
 
-#Preview("バーピー") {
+#Preview("サイドレイズ") {
     NavigationView {
-        ExerciseDetailView(exercise: .burpee)
+        ExerciseDetailView(exercise: .sideRaise)
     }
     .preferredColorScheme(.light)
 }
