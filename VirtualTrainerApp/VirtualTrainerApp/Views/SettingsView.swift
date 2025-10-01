@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingCalendarSettings = false
     @State private var showingNotificationSettings = false
+    @ObservedObject var debugMode: DebugModeManager = .shared
 
     var body: some View {
         NavigationStack {
@@ -53,6 +54,53 @@ struct SettingsView: View {
                 } footer: {
                     Text("推しトレーナーからのトレーニング通知を管理します。")
                 }
+
+                // DEBUG: Debug section - remove entire section before production
+                #if DEBUG
+                if debugMode.isDebugVisible {
+                    // MARK: - デバッグセクション
+                    Section {
+                        Toggle(isOn: $debugMode.isDebugModeEnabled) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("デバッグモード")
+                                        .font(.body)
+                                    Text("開発者向け機能を有効化")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "wrench.and.screwdriver")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+
+                        if debugMode.isDebugModeEnabled {
+                            NavigationLink {
+                                DebugDashboardView(debugMode: debugMode)
+                            } label: {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("デバッグダッシュボード")
+                                            .font(.body)
+                                        Text("通知・カレンダー機能のデバッグツール")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                } icon: {
+                                    Image(systemName: "gear.badge")
+                                        .foregroundColor(.purple)
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("デバッグ")
+                    } footer: {
+                        Text("開発・デバッグ用の機能です。本番環境では表示されません。")
+                    }
+                }
+                #endif
+                // DEBUG: End of debug section
 
                 // MARK: - アプリ情報セクション
                 Section {

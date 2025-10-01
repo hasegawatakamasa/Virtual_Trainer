@@ -217,6 +217,13 @@ Resources/
 - **NotificationSettingsManager**: 通知設定管理（頻度・時間帯・曜日カスタマイズ）
 - **KeychainManager**: OAuth トークンのセキュアストレージ管理（kSecAttrAccessibleWhenUnlockedThisDeviceOnly）
 
+#### Debug and Development Services
+- **DebugModeManager**: デバッグモード管理とUserDefaults連携
+- **TestNotificationService**: テスト通知送信サービス（カスタムメッセージ配信）
+- **NotificationCancellationManager**: 予約通知の個別・一括キャンセル管理
+- **CalendarDebugDataProvider**: カレンダーデータのデバッグ表示用データプロバイダ
+- **GapTimeDebugProvider**: 隙間時間検出結果のデバッグ表示用プロバイダ
+
 #### Resource Management System
 - **ResourceCleanupCoordinator**: システムリソース管理と統合クリーンアップ調整
 - **IntegratedCleanupService**: カメラセッション・音声リソースの統合クリーンアップサービス
@@ -242,10 +249,20 @@ Resources/
 - **RecordsTabView**: トレーニング記録閲覧タブビュー
 - **ProgressVisualizationView**: 進捗グラフとチャート表示
 - **WeeklyChartView**: 週間トレーニング量チャート
-- **SettingsView**: 統合設定画面（通知・カレンダー・トレーナー設定）
+- **SettingsView**: 統合設定画面（通知・カレンダー・トレーナー設定・デバッグ）
 - **CalendarSettingsView**: Googleカレンダー連携設定と認証管理
 - **NotificationSettingsView**: 通知頻度・時間帯・曜日のカスタマイズUI
 - **NotificationStatsView**: 通知効果統計表示（タップ率・実施率）
+
+#### Debug UI Components
+- **DebugDashboardView**: 統合デバッグダッシュボード（通知・カレンダー・API検証）
+- **TestNotificationSection**: テスト通知送信セクション
+- **ScheduledNotificationsView**: 予約済み通知一覧表示
+- **NotificationDetailView**: 通知詳細情報表示（タイトル・本文・配信時刻・識別子）
+- **CalendarDataView**: 取得済みカレンダーイベント一覧表示
+- **EventDetailView**: カレンダーイベント詳細表示
+- **GapTimeDetectionView**: 検出された隙間時間一覧表示
+- **GapTimeDetailView**: 隙間時間詳細情報表示（開始・終了時刻・持続時間・条件判定）
 
 #### Data Models
 - **OshiTrainer**: 推しトレーナーデータモデル（性格・口調・音声・画像）
@@ -260,6 +277,9 @@ Resources/
 - **VirtualTrainerApp.xcdatamodeld**: Core Data モデル定義
 - **CalendarModels**: Googleカレンダーイベント・隙間時間・通知候補のデータモデル
 - **CalendarErrors**: カレンダー連携固有のエラー定義（認証失敗・API通信エラー等）
+- **DebugSettings**: デバッグモード設定データモデル
+- **DebugNotificationCandidate**: デバッグ用通知候補データモデル
+- **DebugAPILog**: API通信履歴ログデータモデル
 
 ### Performance Optimization
 - **Neural Engine**: A12 Bionic+ チップの専用AI処理ユニット活用

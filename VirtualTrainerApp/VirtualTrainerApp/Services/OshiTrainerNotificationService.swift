@@ -68,10 +68,10 @@ class OshiTrainerNotificationService: ObservableObject {
             "slotType": candidate.slot.slotType.rawValue
         ]
 
-        // トレーナー画像を添付
-        if let attachment = try? await createTrainerImageAttachment(trainer: trainer) {
-            content.attachments = [attachment]
-        }
+        // 画像添付は一旦無効化
+        // if let attachment = try? await createTrainerImageAttachment(trainer: trainer) {
+        //     content.attachments = [attachment]
+        // }
 
         // トリガー作成（指定時刻）
         let calendar = Calendar.current
@@ -121,7 +121,19 @@ class OshiTrainerNotificationService: ObservableObject {
 
         try? FileManager.default.copyItem(at: imageURL, to: tempFileURL)
 
-        let attachment = try UNNotificationAttachment(identifier: "trainer-image", url: tempFileURL, options: nil)
+        // サムネイル画像を全体表示（アイコン風）
+        // LINEのようにアイコンとして表示させるため、画像全体を使用
+        let options: [String: Any] = [
+            UNNotificationAttachmentOptionsTypeHintKey: "public.png",
+            // サムネイルの非表示領域を指定（0.0 = 表示、1.0 = 非表示）
+            // x, y, width, height すべて 0-1 の範囲で、画像のどの部分を表示するか指定
+            // 全体を表示する場合: x=0, y=0, width=1, height=1
+            UNNotificationAttachmentOptionsThumbnailClippingRectKey: CGRect(x: 0.0, y: 0.0, width: 1.0, height: 1.0).dictionaryRepresentation as Any,
+            // サムネイルを非表示にしない
+            UNNotificationAttachmentOptionsThumbnailHiddenKey: false
+        ]
+
+        let attachment = try UNNotificationAttachment(identifier: "trainer-image", url: tempFileURL, options: options)
         return attachment
     }
 

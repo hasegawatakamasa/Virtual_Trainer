@@ -14,6 +14,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // 通知センターのデリゲートを設定
         UNUserNotificationCenter.current().delegate = self
 
+        // 通知カテゴリを登録
+        registerNotificationCategories()
+
         // バックグラウンドタスクを登録
         registerBackgroundTasks()
 
@@ -22,6 +25,43 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         print("[AppDelegate] Application did finish launching")
         return true
+    }
+
+    // MARK: - Notification Categories
+
+    private func registerNotificationCategories() {
+        // トレーニング開始アクション
+        let startAction = UNNotificationAction(
+            identifier: "START_TRAINING",
+            title: "今すぐ始める",
+            options: [.foreground]
+        )
+
+        // 後でリマインドアクション
+        let remindLaterAction = UNNotificationAction(
+            identifier: "REMIND_LATER",
+            title: "後で",
+            options: []
+        )
+
+        // トレーニング招待カテゴリ
+        let trainingCategory = UNNotificationCategory(
+            identifier: "TRAINING_INVITATION",
+            actions: [startAction, remindLaterAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        // テスト通知カテゴリ（アクションを追加）
+        let testCategory = UNNotificationCategory(
+            identifier: "TEST_NOTIFICATION",
+            actions: [startAction, remindLaterAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        UNUserNotificationCenter.current().setNotificationCategories([trainingCategory, testCategory])
+        print("[AppDelegate] Notification categories registered")
     }
 
     // MARK: - Background Tasks
@@ -119,7 +159,35 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let notificationId = response.notification.request.identifier
-        print("[AppDelegate] Notification tapped: \(notificationId)")
+        let actionIdentifier = response.actionIdentifier
+
+        print("[AppDelegate] Notification action: \(actionIdentifier), ID: \(notificationId)")
+
+        // アクションに応じた処理
+        switch actionIdentifier {
+        case "START_TRAINING":
+            print("[AppDelegate] User wants to start training now")
+            // トレーニング開始フラグを保存
+            UserDefaults.standard.set(true, forKey: "shouldStartTrainingFromNotification")
+            UserDefaults.standard.set(notificationId, forKey: "lastTappedNotificationId")
+
+        case "REMIND_LATER":
+            print("[AppDelegate] User chose to be reminded later")
+            // 後でリマインド処理（1時間後に再通知など）
+            scheduleReminder(originalNotificationId: notificationId)
+
+        case UNNotificationDefaultActionIdentifier:
+            // 通知本体をタップ（デフォルトアクション）
+            print("[AppDelegate] Notification tapped (default action)")
+            UserDefaults.standard.set(notificationId, forKey: "lastTappedNotificationId")
+
+        case UNNotificationDismissActionIdentifier:
+            // 通知を閉じた
+            print("[AppDelegate] Notification dismissed")
+
+        default:
+            break
+        }
 
         // 通知タップを記録
         Task {
@@ -131,10 +199,32 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             }
         }
 
-        // 通知から取得したデータをUserDefaultsに保存（アプリ内で使用）
-        UserDefaults.standard.set(notificationId, forKey: "lastTappedNotificationId")
-
         completionHandler()
+    }
+
+    /// 後でリマインダーをスケジュール
+    private func scheduleReminder(originalNotificationId: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "トレーニングのリマインダー"
+        content.body = "まだ時間ありますか？一緒にトレーニングしましょう！"
+        content.sound = .default
+        content.categoryIdentifier = "TRAINING_INVITATION"
+
+        // 1時間後にリマインド
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "reminder-\(originalNotificationId)",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("[AppDelegate] Failed to schedule reminder: \(error)")
+            } else {
+                print("[AppDelegate] Reminder scheduled for 1 hour later")
+            }
+        }
     }
 
     /// アプリがフォアグラウンドにある時の通知表示処理

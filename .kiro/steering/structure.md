@@ -152,7 +152,10 @@ Models/
 ├── SessionCompletionData.swift # Session completion data model
 ├── TimerError.swift        # Timer-related error definitions
 ├── CalendarModels.swift    # Google Calendar event and gap time models
-└── CalendarErrors.swift    # Calendar-specific error definitions
+├── CalendarErrors.swift    # Calendar-specific error definitions
+├── DebugSettings.swift     # Debug mode settings and configuration
+├── DebugNotificationCandidate.swift # Debug notification candidate data model
+└── DebugAPILog.swift       # API communication log data model
 ```
 
 #### Views (`Views/`)
@@ -174,24 +177,33 @@ Views/
 ├── ProgressVisualizationView.swift   # Progress charts and statistics
 ├── WeeklyChartView.swift             # Weekly training activity chart
 ├── SessionResultView.swift           # Session completion result display
-├── SettingsView.swift                # Integrated settings screen (notifications, calendar, trainer)
+├── SettingsView.swift                # Integrated settings screen (notifications, calendar, trainer, debug)
 ├── CalendarSettingsView.swift        # Google Calendar integration and OAuth settings
 ├── NotificationSettingsView.swift    # Notification frequency, time range, and day customization
 ├── NotificationStatsView.swift       # Notification analytics (tap rate, completion rate)
-└── Components/
-    ├── LiveAudioTextView.swift       # Live audio feedback text display component
-    ├── SwipableTrainerSelectionView.swift # Swipable trainer selection carousel
-    ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel (legacy)
-    ├── TrainerImageView.swift        # Trainer image loading and display
-    ├── CharacterImageView.swift      # Character image loading and display (legacy)
-    ├── VoicePreviewButton.swift      # Voice preview playback button
-    ├── TrainerSelectionSuccessMessage.swift # Trainer selection success message
-    ├── HintView.swift                # Hint and guidance display component
-    ├── FutureExpansionBanner.swift   # Future exercise expansion banner component
-    ├── QuickPreviewOverlay.swift     # Coming-soon exercise preview overlay
-    ├── TimerDisplayView.swift        # 60-second timer countdown display
-    ├── StartMessageOverlay.swift     # Session start countdown overlay
-    └── FinishOverlayView.swift       # Session finish animation overlay
+├── Components/
+│   ├── LiveAudioTextView.swift       # Live audio feedback text display component
+│   ├── SwipableTrainerSelectionView.swift # Swipable trainer selection carousel
+│   ├── SwipableCharacterSelectionView.swift # Swipable character selection carousel (legacy)
+│   ├── TrainerImageView.swift        # Trainer image loading and display
+│   ├── CharacterImageView.swift      # Character image loading and display (legacy)
+│   ├── VoicePreviewButton.swift      # Voice preview playback button
+│   ├── TrainerSelectionSuccessMessage.swift # Trainer selection success message
+│   ├── HintView.swift                # Hint and guidance display component
+│   ├── FutureExpansionBanner.swift   # Future exercise expansion banner component
+│   ├── QuickPreviewOverlay.swift     # Coming-soon exercise preview overlay
+│   ├── TimerDisplayView.swift        # 60-second timer countdown display
+│   ├── StartMessageOverlay.swift     # Session start countdown overlay
+│   └── FinishOverlayView.swift       # Session finish animation overlay
+└── Debug/                            # Debug and development UI components
+    ├── DebugDashboardView.swift      # Integrated debug dashboard (notifications, calendar, API)
+    ├── TestNotificationSection.swift # Test notification sending section
+    ├── ScheduledNotificationsView.swift # Scheduled notifications list view
+    ├── NotificationDetailView.swift  # Notification detail display (title, body, delivery time, identifier)
+    ├── CalendarDataView.swift        # Fetched calendar events list view
+    ├── EventDetailView.swift         # Calendar event detail display
+    ├── GapTimeDetectionView.swift    # Detected gap times list view
+    └── GapTimeDetailView.swift       # Gap time detail display (start, end, duration, condition check)
 ```
 
 #### Services (`Services/`)
@@ -222,14 +234,20 @@ Services/
 ├── OshiTrainerNotificationService.swift # Oshi trainer notification creation and delivery
 ├── NotificationScheduler.swift       # Notification scheduling and time filtering
 ├── NotificationAnalyticsService.swift # Notification effectiveness tracking (tap rate, completion rate)
-└── NotificationSettingsManager.swift # Notification preferences management (frequency, time range, weekdays)
+├── NotificationSettingsManager.swift # Notification preferences management (frequency, time range, weekdays)
+├── DebugModeManager.swift            # Debug mode management and UserDefaults integration
+└── Debug/                            # Debug-specific services
+    ├── TestNotificationService.swift        # Test notification sending service
+    ├── NotificationCancellationManager.swift # Scheduled notification cancellation management
+    ├── CalendarDebugDataProvider.swift      # Calendar data debug display provider
+    └── GapTimeDebugProvider.swift           # Gap time detection debug display provider
 ```
 
 #### Utilities (`Utilities/`)
 ```
 Utilities/
 ├── AppError.swift               # Centralized error handling
-├── UserDefaultsKeys.swift       # Configuration and settings keys
+├── UserDefaultsKeys.swift       # Configuration and settings keys (including debug mode)
 ├── KeychainKeys.swift           # Keychain item keys for OAuth tokens
 ├── ResourceCleanupError.swift   # Resource management error definitions
 ├── OshiTrainerError.swift       # Oshi trainer system error definitions (trainerNotFound, imageLoadFailed, etc.)

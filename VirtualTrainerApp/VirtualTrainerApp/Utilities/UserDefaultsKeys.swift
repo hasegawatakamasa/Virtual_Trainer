@@ -66,6 +66,11 @@ enum UserDefaultsKeys {
     static let calendarConsentGiven = "calendarConsentGiven"
     static let isCalendarConnected = "isCalendarConnected"
     static let connectedGoogleEmail = "connectedGoogleEmail"
+
+    // DEBUG: Debug-only keys - safe to remove in production
+    // MARK: - Debug Mode Settings
+    static let debugModeEnabled = "DebugModeEnabled"
+    static let debugLogLevel = "DebugLogLevel"
 }
 
 /// UserDefaultsのデフォルト値
