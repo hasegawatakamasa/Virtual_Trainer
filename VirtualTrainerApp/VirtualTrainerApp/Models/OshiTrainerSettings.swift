@@ -5,8 +5,8 @@ import Combine
 class OshiTrainerSettings: ObservableObject {
     @Published var selectedTrainer: OshiTrainer {
         didSet {
-            // UserDefaultsへの永続化
-            UserDefaults.standard.set(selectedTrainer.id, forKey: UserDefaultsKeys.selectedOshiTrainerId)
+            // 共有UserDefaultsへの永続化
+            sharedDefaults.set(selectedTrainer.id, forKey: UserDefaultsKeys.selectedOshiTrainerId)
 
             // VoiceSettings連携
             VoiceSettings.shared.updateCharacter(selectedTrainer.voiceCharacter)
@@ -18,9 +18,15 @@ class OshiTrainerSettings: ObservableObject {
     /// シングルトンインスタンス
     static let shared = OshiTrainerSettings()
 
+    /// App Group共有UserDefaults
+    private let sharedDefaults: UserDefaults
+
     private init() {
+        // App Group共有UserDefaultsの初期化
+        self.sharedDefaults = UserDefaults(suiteName: "group.com.yourcompany.VirtualTrainer") ?? .standard
+
         // UserDefaultsから設定を読み込み、デフォルトは推乃 藍
-        if let savedId = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedOshiTrainerId),
+        if let savedId = sharedDefaults.string(forKey: UserDefaultsKeys.selectedOshiTrainerId),
            let trainer = OshiTrainer.allTrainers.first(where: { $0.id == savedId }) {
             self.selectedTrainer = trainer
             print("[OshiTrainerSettings] 保存されたトレーナーを復元: \(trainer.displayName)")
@@ -45,7 +51,7 @@ class OshiTrainerSettings: ObservableObject {
 
     /// データマイグレーション: VoiceCharacterからOshiTrainerへ
     private func migrateVoiceCharacterToOshiTrainer() {
-        // 既存のselectedVoiceCharacterを読み込み
+        // 既存のselectedVoiceCharacterを読み込み（標準UserDefaultsから）
         if let savedVoiceCharacter = UserDefaults.standard.string(forKey: UserDefaultsKeys.selectedVoiceCharacter),
            let voiceChar = VoiceCharacter(rawValue: savedVoiceCharacter) {
 
@@ -59,8 +65,8 @@ class OshiTrainerSettings: ObservableObject {
                 matchingTrainer = .oshinoAi  // 現在は推乃 藍のみ
             }
 
-            // 新設定に保存
-            UserDefaults.standard.set(matchingTrainer.id, forKey: UserDefaultsKeys.selectedOshiTrainerId)
+            // 共有UserDefaultsに保存
+            sharedDefaults.set(matchingTrainer.id, forKey: UserDefaultsKeys.selectedOshiTrainerId)
             self.selectedTrainer = matchingTrainer
 
             print("[OshiTrainerSettings] マイグレーション完了: \(voiceChar.displayName) → \(matchingTrainer.displayName)")

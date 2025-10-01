@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import Intents
 
 /// 推しトレーナー通知サービス
 /// 要件対応: 3.5, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
@@ -56,22 +57,14 @@ class OshiTrainerNotificationService: ObservableObject {
     private func scheduleNotification(_ candidate: NotificationCandidate) async throws {
         let trainer = oshiTrainerSettings.selectedTrainer
 
-        // 通知コンテンツを作成
-        let content = UNMutableNotificationContent()
-        content.title = trainer.displayName
-        content.body = candidate.message
-        content.sound = .default
-        content.categoryIdentifier = "TRAINING_INVITATION"
-        content.userInfo = [
-            "notificationId": candidate.id.uuidString,
-            "trainerId": trainer.id,
-            "slotType": candidate.slot.slotType.rawValue
-        ]
-
-        // 画像添付は一旦無効化
-        // if let attachment = try? await createTrainerImageAttachment(trainer: trainer) {
-        //     content.attachments = [attachment]
-        // }
+        // Communication Notifications形式の通知コンテンツを作成
+        let content: UNNotificationContent
+        if #available(iOS 15.0, *) {
+            content = try createCommunicationNotification(trainer: trainer, message: candidate.message, candidate: candidate)
+        } else {
+            // iOS 15未満の場合は通常通知
+            content = createStandardNotification(trainer: trainer, message: candidate.message, candidate: candidate)
+        }
 
         // トリガー作成（指定時刻）
         let calendar = Calendar.current
@@ -87,6 +80,120 @@ class OshiTrainerNotificationService: ObservableObject {
 
         // 通知をスケジュール
         try await notificationCenter.add(request)
+    }
+
+    /// Communication Notifications形式の通知コンテンツを作成（iOS 15+）
+    @available(iOS 15.0, *)
+    private func createCommunicationNotification(trainer: OshiTrainer, message: String, candidate: NotificationCandidate) throws -> UNNotificationContent {
+        print("[OshiTrainerNotificationService] Communication Notification作成開始")
+
+        // INPersonを作成
+        let sender = createINPerson(from: trainer)
+        print("[OshiTrainerNotificationService] INPerson作成完了: \(sender.displayName)")
+
+        // INSendMessageIntentを作成
+        let intent = INSendMessageIntent(
+            recipients: nil,
+            outgoingMessageType: .outgoingMessageText,
+            content: message,
+            speakableGroupName: nil,
+            conversationIdentifier: trainer.id,
+            serviceName: nil,
+            sender: sender,
+            attachments: nil
+        )
+        print("[OshiTrainerNotificationService] INSendMessageIntent作成完了")
+
+        // 送信者画像を設定
+        if let image = createINImage(from: trainer) {
+            intent.setImage(image, forParameterNamed: \.sender)
+            print("[OshiTrainerNotificationService] 送信者画像設定完了")
+        } else {
+            print("[OshiTrainerNotificationService] ⚠️ 送信者画像の設定に失敗")
+        }
+
+        // Intentから通知コンテンツを生成
+        let content = UNMutableNotificationContent()
+        content.title = trainer.displayName
+        content.body = message
+        content.sound = .default
+        content.categoryIdentifier = "TRAINING_INVITATION"
+        content.userInfo = [
+            "notificationId": candidate.id.uuidString,
+            "trainerId": trainer.id,
+            "slotType": candidate.slot.slotType.rawValue
+        ]
+
+        // INInteractionをdonateしてからupdating
+        let interaction = INInteraction(intent: intent, response: nil)
+        interaction.direction = .incoming
+        interaction.donate(completion: { error in
+            if let error = error {
+                print("[OshiTrainerNotificationService] ⚠️ Interaction donate失敗: \(error)")
+            } else {
+                print("[OshiTrainerNotificationService] Interaction donate成功")
+            }
+        })
+
+        // Intentを使ってコンテンツを更新
+        do {
+            let updatedContent = try content.updating(from: intent)
+            print("[OshiTrainerNotificationService] ✅ Communication Notification変換成功")
+            return updatedContent
+        } catch {
+            print("[OshiTrainerNotificationService] ⚠️ Communication Notification変換失敗: \(error)")
+            throw error
+        }
+    }
+
+    /// 通常通知コンテンツを作成（iOS 15未満用）
+    private func createStandardNotification(trainer: OshiTrainer, message: String, candidate: NotificationCandidate) -> UNNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = trainer.displayName
+        content.body = message
+        content.sound = .default
+        content.categoryIdentifier = "TRAINING_INVITATION"
+        content.userInfo = [
+            "notificationId": candidate.id.uuidString,
+            "trainerId": trainer.id,
+            "slotType": candidate.slot.slotType.rawValue
+        ]
+        return content
+    }
+
+    /// INPersonを作成
+    private func createINPerson(from trainer: OshiTrainer) -> INPerson {
+        let personHandle = INPersonHandle(value: trainer.id, type: .unknown)
+
+        var nameComponents = PersonNameComponents()
+        nameComponents.nickname = trainer.displayName
+
+        let image = createINImage(from: trainer)
+
+        return INPerson(
+            personHandle: personHandle,
+            nameComponents: nameComponents,
+            displayName: trainer.displayName,
+            image: image,
+            contactIdentifier: nil,
+            customIdentifier: trainer.id
+        )
+    }
+
+    /// INImageを作成
+    private func createINImage(from trainer: OshiTrainer) -> INImage? {
+        guard let imageURL = trainer.imageFileURL() else {
+            print("[OshiTrainerNotificationService] トレーナー画像URL取得失敗: \(trainer.displayName)")
+            return nil
+        }
+
+        guard let imageData = try? Data(contentsOf: imageURL) else {
+            print("[OshiTrainerNotificationService] 画像データ読み込み失敗: \(imageURL.path)")
+            return nil
+        }
+
+        print("[OshiTrainerNotificationService] 画像読み込み成功: \(trainer.displayName)")
+        return INImage(imageData: imageData)
     }
 
     /// 推しトレーナーに応じたメッセージを生成
