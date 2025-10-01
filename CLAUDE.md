@@ -27,6 +27,7 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 - `exercise-selection-ui-improvement`: エクササイズ選択画面のUI改善（種目追加・説明・ユーザビリティ向上）
 - `google-calendar-training-notifications`: Googleカレンダー連携による推しトレーナーからの通知機能（隙間時間検知・トレーニング促進通知）
 - `debug-notifications-calendar-visibility`: 開発・デバッグ用の通知とカレンダー可視化機能（テスト通知送信・カレンダー取得状況確認・予約通知一覧表示）
+- `line-style-trainer-notification-api`: Communication Notifications APIを使用したLINEライクな推しトレーナー通知表示（左上にトレーナー画像、右下にアプリアイコン）
 - Check `.kiro/specs/` for active specifications
 - Use `/kiro:spec-status [feature-name]` to check progress
 

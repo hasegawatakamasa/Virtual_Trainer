@@ -3,6 +3,7 @@
 import Foundation
 import UserNotifications
 import SwiftUI
+import Intents
 
 /// テスト通知送信サービス
 /// 要件対応: 1.2, 1.3, 1.4, 1.5, 1.6
@@ -34,23 +35,18 @@ class TestNotificationService: ObservableObject {
                 return
             }
 
-            // 通知コンテンツを作成
-            let content = UNMutableNotificationContent()
             let trainer = oshiSettings.selectedTrainer
-            content.title = trainer.displayName
-            content.body = "[テスト通知] 通知機能のテストです。このメッセージが表示されれば正常に動作しています。"
-            content.sound = .default
-            content.categoryIdentifier = "TEST_NOTIFICATION"
-            content.userInfo = [
-                "isTest": true,
-                "trainerId": trainer.id,
-                "timestamp": Date().timeIntervalSince1970
-            ]
+            let message = "[テスト通知] 通知機能のテストです。このメッセージが表示されれば正常に動作しています。"
 
-            // 画像添付は一旦無効化
-            // if let attachment = try? await createTrainerImageAttachment(trainer: trainer) {
-            //     content.attachments = [attachment]
-            // }
+            // Communication Notifications形式で通知コンテンツを作成
+            let content: UNNotificationContent
+            if #available(iOS 15.0, *) {
+                print("[TestNotificationService] Communication Notification形式でテスト通知作成")
+                content = try createCommunicationNotification(trainer: trainer, message: message)
+            } else {
+                print("[TestNotificationService] 通常通知形式でテスト通知作成")
+                content = createStandardNotification(trainer: trainer, message: message)
+            }
 
             // 即座に配信（5秒後）
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
@@ -64,12 +60,128 @@ class TestNotificationService: ObservableObject {
 
             // 通知をスケジュール
             try await notificationCenter.add(request)
+            print("[TestNotificationService] テスト通知スケジュール完了")
 
             sendingStatus = .success
         } catch {
+            print("[TestNotificationService] テスト通知送信失敗: \(error)")
             sendingStatus = .failure(error)
             throw error
         }
+    }
+
+    /// Communication Notifications形式の通知コンテンツを作成（iOS 15+）
+    @available(iOS 15.0, *)
+    private func createCommunicationNotification(trainer: OshiTrainer, message: String) throws -> UNNotificationContent {
+        print("[TestNotificationService] Communication Notification作成開始")
+
+        // INPersonを作成
+        let sender = createINPerson(from: trainer)
+        print("[TestNotificationService] INPerson作成完了: \(sender.displayName)")
+
+        // INSendMessageIntentを作成
+        let intent = INSendMessageIntent(
+            recipients: nil,
+            outgoingMessageType: .outgoingMessageText,
+            content: message,
+            speakableGroupName: nil,
+            conversationIdentifier: trainer.id,
+            serviceName: nil,
+            sender: sender,
+            attachments: nil
+        )
+        print("[TestNotificationService] INSendMessageIntent作成完了")
+
+        // 送信者画像を設定
+        if let image = createINImage(from: trainer) {
+            intent.setImage(image, forParameterNamed: \.sender)
+            print("[TestNotificationService] 送信者画像設定完了")
+        } else {
+            print("[TestNotificationService] ⚠️ 送信者画像の設定に失敗")
+        }
+
+        // Intentから通知コンテンツを生成
+        let content = UNMutableNotificationContent()
+        content.title = trainer.displayName
+        content.body = message
+        content.sound = .default
+        content.categoryIdentifier = "TEST_NOTIFICATION"
+        content.userInfo = [
+            "isTest": true,
+            "trainerId": trainer.id,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+
+        // INInteractionをdonateしてからupdating
+        let interaction = INInteraction(intent: intent, response: nil)
+        interaction.direction = .incoming
+        interaction.donate(completion: { error in
+            if let error = error {
+                print("[TestNotificationService] ⚠️ Interaction donate失敗: \(error)")
+            } else {
+                print("[TestNotificationService] Interaction donate成功")
+            }
+        })
+
+        // Intentを使ってコンテンツを更新
+        do {
+            let updatedContent = try content.updating(from: intent)
+            print("[TestNotificationService] ✅ Communication Notification変換成功")
+            return updatedContent
+        } catch {
+            print("[TestNotificationService] ⚠️ Communication Notification変換失敗: \(error)")
+            throw error
+        }
+    }
+
+    /// 通常通知コンテンツを作成（iOS 15未満用）
+    private func createStandardNotification(trainer: OshiTrainer, message: String) -> UNNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = trainer.displayName
+        content.body = message
+        content.sound = .default
+        content.categoryIdentifier = "TEST_NOTIFICATION"
+        content.userInfo = [
+            "isTest": true,
+            "trainerId": trainer.id,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+        return content
+    }
+
+    /// INPersonを作成
+    private func createINPerson(from trainer: OshiTrainer) -> INPerson {
+        let personHandle = INPersonHandle(value: trainer.id, type: .unknown)
+
+        var nameComponents = PersonNameComponents()
+        nameComponents.nickname = trainer.displayName
+
+        let image = createINImage(from: trainer)
+
+        return INPerson(
+            personHandle: personHandle,
+            nameComponents: nameComponents,
+            displayName: trainer.displayName,
+            image: image,
+            contactIdentifier: nil,
+            customIdentifier: trainer.id
+        )
+    }
+
+    /// INImageを作成
+    private func createINImage(from trainer: OshiTrainer) -> INImage? {
+        guard let imageURL = trainer.imageFileURL() else {
+            print("[TestNotificationService] トレーナー画像URL取得失敗: \(trainer.displayName)")
+            return nil
+        }
+
+        guard let imageData = try? Data(contentsOf: imageURL) else {
+            print("[TestNotificationService] 画像データ読み込み失敗: \(imageURL.path)")
+            return nil
+        }
+
+        print("[TestNotificationService] 画像読み込み成功: \(trainer.displayName)")
+        return INImage(imageData: imageData)
     }
 
     /// 通知アタッチメント（トレーナー画像）を作成
