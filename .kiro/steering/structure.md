@@ -72,6 +72,7 @@ VirtualTrainerApp/
 ```
 VirtualTrainerApp/VirtualTrainerApp/
 ├── VirtualTrainerAppApp.swift      # SwiftUI App entry point
+├── AppDelegate.swift               # UIApplicationDelegate for background tasks and notification handling
 ├── ContentView.swift               # Root view (legacy)
 ├── Info.plist                      # App configuration and permissions
 ├── VirtualTrainerApp.entitlements  # App capabilities and sandbox settings
@@ -81,6 +82,8 @@ VirtualTrainerApp/VirtualTrainerApp/
 ├── Resources/                      # App resources
 │   ├── Audio/                      # VOICEVOX audio files (manual setup required)
 │   └── Image/                      # Character portrait images
+│       ├── OshinoAi/               # 推乃 藍（デフォルトトレーナー）character images
+│       │   └── normal.png         # 推乃 藍 character portrait
 │       ├── ずんだもん/             # ずんだもん character images
 │       │   └── zundamon_1.png     # ずんだもん portrait
 │       └── 四国めたん/             # 四国めたん character images
@@ -147,7 +150,9 @@ Models/
 ├── SessionInterruption.swift # Session interruption types
 ├── InterruptedSessionData.swift # Interrupted session data storage
 ├── SessionCompletionData.swift # Session completion data model
-└── TimerError.swift        # Timer-related error definitions
+├── TimerError.swift        # Timer-related error definitions
+├── CalendarModels.swift    # Google Calendar event and gap time models
+└── CalendarErrors.swift    # Calendar-specific error definitions
 ```
 
 #### Views (`Views/`)
@@ -169,6 +174,10 @@ Views/
 ├── ProgressVisualizationView.swift   # Progress charts and statistics
 ├── WeeklyChartView.swift             # Weekly training activity chart
 ├── SessionResultView.swift           # Session completion result display
+├── SettingsView.swift                # Integrated settings screen (notifications, calendar, trainer)
+├── CalendarSettingsView.swift        # Google Calendar integration and OAuth settings
+├── NotificationSettingsView.swift    # Notification frequency, time range, and day customization
+├── NotificationStatsView.swift       # Notification analytics (tap rate, completion rate)
 └── Components/
     ├── LiveAudioTextView.swift       # Live audio feedback text display component
     ├── SwipableTrainerSelectionView.swift # Swipable trainer selection carousel
@@ -203,7 +212,17 @@ Services/
 ├── InterruptionHandler.swift         # Session interruption handling and recovery
 ├── SessionCompletionCoordinator.swift # Session completion flow coordination
 ├── ResourceCleanupCoordinator.swift  # System resource management and cleanup coordination
-└── IntegratedCleanupService.swift    # Unified resource cleanup service
+├── IntegratedCleanupService.swift    # Unified resource cleanup service
+├── KeychainManager.swift             # Secure OAuth token storage with iOS Keychain
+├── GoogleCalendarAuthService.swift   # OAuth 2.0 authentication and token management
+├── GoogleCalendarAPIClient.swift     # Google Calendar API client for event fetching
+├── CalendarEventAnalyzer.swift       # Calendar event analysis and gap time detection
+├── CalendarSyncCoordinator.swift     # Calendar synchronization and background update coordination
+├── CalendarPrivacyManager.swift      # Privacy-compliant calendar data processing
+├── OshiTrainerNotificationService.swift # Oshi trainer notification creation and delivery
+├── NotificationScheduler.swift       # Notification scheduling and time filtering
+├── NotificationAnalyticsService.swift # Notification effectiveness tracking (tap rate, completion rate)
+└── NotificationSettingsManager.swift # Notification preferences management (frequency, time range, weekdays)
 ```
 
 #### Utilities (`Utilities/`)
@@ -211,6 +230,7 @@ Services/
 Utilities/
 ├── AppError.swift               # Centralized error handling
 ├── UserDefaultsKeys.swift       # Configuration and settings keys
+├── KeychainKeys.swift           # Keychain item keys for OAuth tokens
 ├── ResourceCleanupError.swift   # Resource management error definitions
 ├── OshiTrainerError.swift       # Oshi trainer system error definitions (trainerNotFound, imageLoadFailed, etc.)
 ├── CharacterImageError.swift    # Character image loading error definitions

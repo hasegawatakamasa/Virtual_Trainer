@@ -2,15 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>このアプリは、リアルタイムでエクササイズフォームを分析し、回数をカウントするためにカメラを使用します。</string>
-	<key>CFBundleDisplayName</key>
-	<string>推しトレ</string>
-	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
-	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>© 2025 推しトレ. 音声合成: VOICEVOX (ずんだもん)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.virtualtrainer.calendarSync</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.786874742991-e1u6bqkbvfm1ml2cvvju9sjom26iosdv</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>786874742991-e1u6bqkbvfm1ml2cvvju9sjom26iosdv.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>786874742991-e1u6bqkbvfm1ml2cvvju9sjom26iosdv.apps.googleusercontent.com</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

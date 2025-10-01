@@ -257,17 +257,17 @@ struct ExerciseDetailView: View {
     
     private func startTraining() {
         print("🚀 ExerciseDetailView: startTraining called for \(exercise.displayName)")
-        guard exercise.isAvailable else { 
+        guard exercise.isAvailable else {
             print("❌ Exercise not available: \(exercise.displayName)")
-            return 
+            return
         }
-        
+
         isStartingTraining = true
         print("📱 Starting training for \(exercise.displayName)")
-        
+
         // 選択を保存
         AppSettings.shared.lastSelectedExercise = exercise
-        
+
         // 履歴に追加
         let historyItem = ExerciseHistoryItem(
             exerciseType: exercise,
@@ -276,7 +276,10 @@ struct ExerciseDetailView: View {
             accuracy: 0.0
         )
         AppSettings.shared.saveExerciseHistory(historyItem)
-        
+
+        // 通知からセッションへの紐付け
+        linkNotificationToSession()
+
         // トレーニング画面を表示
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             print("🎬 Showing training view...")
@@ -330,6 +333,37 @@ struct ExerciseDetailView: View {
                 "手は肩幅より少し広めに",
                 "腰を落とさない"
             ]
+        }
+    }
+
+    // MARK: - Notification Linking
+
+    /// 通知からセッションへの紐付け
+    private func linkNotificationToSession() {
+        // 最後にタップされた通知IDを取得
+        guard let notificationId = UserDefaults.standard.string(forKey: "lastTappedNotificationId") else {
+            print("📱 No notification ID found, session started without notification")
+            return
+        }
+
+        // セッションIDを生成（開始時刻を使用）
+        let sessionId = "\(Date().timeIntervalSince1970)"
+
+        // 通知とセッションを紐付け
+        let analyticsService = NotificationAnalyticsService()
+        Task {
+            do {
+                try await analyticsService.linkNotificationToSession(
+                    notificationId: notificationId,
+                    sessionId: sessionId
+                )
+                print("✅ Linked notification \(notificationId) to session \(sessionId)")
+
+                // 使用済み通知IDをクリア
+                UserDefaults.standard.removeObject(forKey: "lastTappedNotificationId")
+            } catch {
+                print("❌ Failed to link notification to session: \(error)")
+            }
         }
     }
 }

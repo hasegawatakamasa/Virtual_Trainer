@@ -111,6 +111,11 @@ import CoreData                  // Object graph and persistence framework
 // System Integration
 import MetricKit                 // Performance monitoring
 import Charts                    // Native SwiftUI charts for progress visualization
+import UserNotifications         // Local notification delivery and management
+import BackgroundTasks           // Background processing and calendar sync
+import Security                  // Keychain services for secure token storage
+import EventKit                  // Calendar access (future: native calendar integration)
+import AuthenticationServices    // OAuth 2.0 web authentication flow
 ```
 
 ## Audio Feedback System
@@ -200,6 +205,18 @@ Resources/
 - **AchievementSystem**: アチーブメント判定と解除ロジック
 - **OshiReactionManager**: 推しキャラクターリアクション管理と好感度システム
 
+#### Calendar and Notification Services
+- **GoogleCalendarAuthService**: OAuth 2.0認証フローとトークン管理（ASWebAuthenticationSession使用）
+- **GoogleCalendarAPIClient**: Google Calendar API通信クライアント（イベント取得・解析）
+- **CalendarEventAnalyzer**: カレンダーイベント解析と隙間時間検出ロジック
+- **CalendarSyncCoordinator**: カレンダー同期調整とバックグラウンド更新管理
+- **CalendarPrivacyManager**: プライバシー準拠のカレンダーデータ処理
+- **OshiTrainerNotificationService**: 推しトレーナー通知作成と配信（UNUserNotificationCenter統合）
+- **NotificationScheduler**: 通知スケジューリングと時間帯フィルタリング
+- **NotificationAnalyticsService**: 通知効果測定とタップ率・実施率の追跡
+- **NotificationSettingsManager**: 通知設定管理（頻度・時間帯・曜日カスタマイズ）
+- **KeychainManager**: OAuth トークンのセキュアストレージ管理（kSecAttrAccessibleWhenUnlockedThisDeviceOnly）
+
 #### Resource Management System
 - **ResourceCleanupCoordinator**: システムリソース管理と統合クリーンアップ調整
 - **IntegratedCleanupService**: カメラセッション・音声リソースの統合クリーンアップサービス
@@ -225,6 +242,10 @@ Resources/
 - **RecordsTabView**: トレーニング記録閲覧タブビュー
 - **ProgressVisualizationView**: 進捗グラフとチャート表示
 - **WeeklyChartView**: 週間トレーニング量チャート
+- **SettingsView**: 統合設定画面（通知・カレンダー・トレーナー設定）
+- **CalendarSettingsView**: Googleカレンダー連携設定と認証管理
+- **NotificationSettingsView**: 通知頻度・時間帯・曜日のカスタマイズUI
+- **NotificationStatsView**: 通知効果統計表示（タップ率・実施率）
 
 #### Data Models
 - **OshiTrainer**: 推しトレーナーデータモデル（性格・口調・音声・画像）
@@ -237,6 +258,8 @@ Resources/
 - **AudioTextData**: 音声フィードバックテキストデータモデル
 - **TrainingRecord**: Core Data エンティティ for トレーニング記録
 - **VirtualTrainerApp.xcdatamodeld**: Core Data モデル定義
+- **CalendarModels**: Googleカレンダーイベント・隙間時間・通知候補のデータモデル
+- **CalendarErrors**: カレンダー連携固有のエラー定義（認証失敗・API通信エラー等）
 
 ### Performance Optimization
 - **Neural Engine**: A12 Bionic+ チップの専用AI処理ユニット活用
@@ -275,10 +298,15 @@ export GRU_MODEL_PATH="./AI_Model/best_gru_model_v7_quantized.pth"
 ```
 
 ### iOS Configuration
-- **Info.plist**: カメラ使用許可設定
+- **Info.plist**:
+  - カメラ使用許可設定（NSCameraUsageDescription）
+  - 通知使用許可設定（NSUserNotificationsUsageDescription）
+  - バックグラウンドモード（fetch, processing for calendar sync）
+  - カスタムURLスキーム（OAuth 2.0リダイレクト用）
 - **Bundle Identifier**: アプリ識別子
 - **Deployment Target**: iOS 16.0 minimum
-- **Device Capabilities**: camera, neural-engine
+- **Device Capabilities**: camera, neural-engine, push-notifications
+- **App Groups**: （将来的な拡張用）通知拡張とのデータ共有
 
 ## Port Configuration
 
@@ -288,9 +316,15 @@ export GRU_MODEL_PATH="./AI_Model/best_gru_model_v7_quantized.pth"
 - **Display**: Local GUI window
 
 ### iOS Application
-- **Network**: None (完全オンデバイス処理)
+- **Network**:
+  - HTTPS only (Google Calendar API通信)
+  - OAuth 2.0認証エンドポイント（accounts.google.com）
+  - Calendar API エンドポイント（www.googleapis.com/calendar/v3）
 - **Camera**: AVCaptureDevice access
-- **Storage**: Local CoreData/UserDefaults
+- **Storage**:
+  - Local CoreData/UserDefaults
+  - iOS Keychain（OAuth トークン）
+  - UNUserNotificationCenter（通知スケジュール）
 
 ## Build and Deployment
 
@@ -320,10 +354,16 @@ open VirtualTrainerApp/VirtualTrainerApp.xcodeproj
 ## Security and Privacy
 
 ### Data Privacy
-- **No External APIs**: 全ての処理をローカルデバイスで完結
-- **No Data Collection**: ユーザーデータの外部送信なし
+- **Limited External APIs**:
+  - AI処理は完全オンデバイス（外部送信なし）
+  - Googleカレンダー連携のみGoogle API使用（ユーザー明示的同意）
+  - カレンダーイベントの時刻のみ使用、詳細・タイトルは保存しない
+- **No Unnecessary Data Collection**: トレーニングデータと通知効果測定のみローカル保存
 - **Camera Privacy**: システムレベルでの権限管理
-- **Secure Storage**: iOS KeychainServices使用
+- **Secure Storage**:
+  - iOS Keychain Services（kSecAttrAccessibleWhenUnlockedThisDeviceOnly）
+  - OAuth トークンの最高セキュリティレベル暗号化
+- **HTTPS Only**: 全てのネットワーク通信はHTTPS暗号化
 
 ### Model Security
 - **Code Signing**: iOS Distribution署名

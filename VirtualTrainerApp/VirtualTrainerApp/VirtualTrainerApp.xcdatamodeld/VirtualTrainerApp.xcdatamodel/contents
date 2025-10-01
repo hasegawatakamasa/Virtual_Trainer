@@ -26,4 +26,15 @@
         <attribute name="totalReps" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="reps" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="SessionRep" inverseName="session" inverseEntity="SessionRep"/>
     </entity>
+    <entity name="NotificationRecord" representedClassName="NotificationRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="String"/>
+        <attribute name="scheduledTime" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="deliveryTime" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="trainerId" attributeType="String"/>
+        <attribute name="wasTapped" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="linkedSessionId" optional="YES" attributeType="String"/>
+        <attribute name="slotType" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isInvalid" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+    </entity>
 </model>

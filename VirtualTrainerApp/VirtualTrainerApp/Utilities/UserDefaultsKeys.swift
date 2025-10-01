@@ -59,6 +59,13 @@ enum UserDefaultsKeys {
     static let lastSelectedExercise = "lastSelectedExercise"
     static let exerciseHistory = "exerciseHistory"
     static let defaultExercise = "defaultExercise"
+
+    // MARK: - Google Calendar Settings
+    static let notificationSettings = "notificationSettings"
+    static let calendarLastSyncTime = "calendarLastSyncTime"
+    static let calendarConsentGiven = "calendarConsentGiven"
+    static let isCalendarConnected = "isCalendarConnected"
+    static let connectedGoogleEmail = "connectedGoogleEmail"
 }
 
 /// UserDefaultsのデフォルト値

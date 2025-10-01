@@ -8,6 +8,7 @@ struct ExerciseSelectionView: View {
     @State private var selectedExercise: ExerciseType?
     @State private var showingVoiceSettings = false
     @State private var showingRecords = false
+    @State private var showingSettings = false
     @AppStorage("lastSelectedExercise") private var lastSelectedExerciseRaw: String = ExerciseType.overheadPress.rawValue
     
     // 前回選択した種目
@@ -49,6 +50,9 @@ struct ExerciseSelectionView: View {
         }
         .sheet(isPresented: $showingRecords) {
             RecordsTabView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
         }
         .onAppear {
             // 初回起動時の設定
@@ -97,6 +101,17 @@ struct ExerciseSelectionView: View {
                             .frame(width: 32, height: 32)
                     }
                     .accessibilityLabel("推しトレーナー設定")
+
+                    // 設定ボタン
+                    Button(action: {
+                        showingSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel("設定")
                 }
             }
         }
